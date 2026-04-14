@@ -10,42 +10,25 @@ const PRESSOES = {
   90: { 1: 660,  2: 890,  3: 1170, 4: 1480, 5: 1820 }
 };
 
-// ─── Tabela de referência interpolada do gráfico Gold Slim
-// Formato: [largura_folha_mm, pressao_ensaio_Pa, altura_max_mm]
-// Base: perfis LG248+LG249, Jx total = 102.388 mm⁴
-const TABELA_REF = [
-  [600,610,1950],[600,750,1780],[600,890,1650],[600,1060,1500],[600,1170,1400],
-  [700,610,1870],[700,750,1700],[700,890,1570],[700,1060,1420],[700,1170,1330],
-  [800,610,1790],[800,750,1620],[800,890,1480],[800,1060,1340],[800,1170,1260],
-  [900,610,1720],[900,750,1545],[900,890,1400],[900,1060,1260],[900,1170,1180],
-  [1000,610,1650],[1000,750,1470],[1000,890,1330],[1000,1060,1190],[1000,1170,1110],
-  [1100,610,1580],[1100,750,1400],[1100,890,1240],[1100,1060,1080],[1100,1170,945],
-  [1200,610,1510],[1200,750,1330],[1200,890,1175],[1200,1060,1010],[1200,1170,875],
-  [1300,610,1445],[1300,750,1265],[1300,890,1110],[1300,1060,945],[1300,1170,810],
-  [1400,610,1380],[1400,750,1200],[1400,890,1040],[1400,1060,875],[1400,1170,745],
-  [1500,610,1310],[1500,750,1130],[1500,890,975],[1500,1060,810],[1500,1170,685],
-];
 
-const JX_REF = 102388; // mm⁴ — referência LG248+LG249
 
-// ─── Estado dos perfis
+
 let perfis = [
   { nome: 'LG248', area: 272,  jx: 49594, wx: 2119, ix: 0 },
   { nome: 'LG249', area: 250,  jx: 52794, wx: 2321, ix: 0 }
 ];
 
-// ─── Interpolação bilinear na tabela de referência
 function interpolaHmax(larguraFolha, pressao) {
-  const Ls = [600,700,800,900,1000,1100,1200,1300,1400,1500];
-  const Ps = [610,750,890,1060,1170];
+  const Ls = [600, 800, 1000, 1200, 1400, 1500];
+  const Ps = [350, 610, 750, 890, 950, 1170, 1180, 1820];
 
   const Lc = Math.max(600, Math.min(1500, larguraFolha));
-  const Pc = Math.max(610, Math.min(1170, pressao));
+  const Pc = Math.max(350, Math.min(1820, pressao));
 
   const l1 = Ls.filter(l => l <= Lc).pop() || 600;
   const l2 = Ls.filter(l => l >  Lc)[0]  || 1500;
-  const p1 = Ps.filter(p => p <= Pc).pop() || 610;
-  const p2 = Ps.filter(p => p >  Pc)[0]  || 1170;
+  const p1 = Ps.filter(p => p <= Pc).pop() || 350;
+  const p2 = Ps.filter(p => p >  Pc)[0]  || 1820;
 
   const get = (l, p) => {
     const row = TABELA_REF.find(r => r[0] === l && r[1] === p);
@@ -61,13 +44,18 @@ function interpolaHmax(larguraFolha, pressao) {
   return hP1 + tp * (hP2 - hP1);
 }
 
-// ─── Cálculo da altura máxima escalada pelo Jx dos perfis inseridos
 function calcularHmax(larguraFolha, pressao, jxTotal) {
   if (!larguraFolha || !pressao || !jxTotal) return 0;
-  const hRef = interpolaHmax(larguraFolha, pressao);
-  const ratio = Math.pow(jxTotal / JX_REF, 1 / 3);
-  return Math.round(hRef * ratio);
+
+  // CÁLCULO FÍSICO DIRETO (Baseado em E=70.000MPa e Flecha L/175)
+  // Esta fórmula substitui qualquer tabela de catálogo.
+  const constanteAluminio = 30720000000; 
+  const hCubo = (constanteAluminio * jxTotal) / (pressao * larguraFolha);
+  
+  return Math.round(Math.pow(hCubo, 1/3));
 }
+
+
 
 // ─── Soma do Jx de todos os perfis
 function somarJx() {
