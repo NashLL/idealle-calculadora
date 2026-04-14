@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Calculadora de Esquadrias — NBR 10821-2017</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <div class="page-wrap">
+
+    <header class="page-header">
+      <p class="page-eyebrow">NBR 10821-2017</p>
+      <h1 class="page-title">Calculadora de Altura Máxima</h1>
+      <p class="page-sub">Janela de correr — resistência às cargas de vento</p>
+    </header>
+
+    <main class="main-grid">
+
+      <section class="card" id="sec-esquadria">
+        <p class="sec-label">Dados da esquadria</p>
+        <div class="grid2">
+          <div class="field">
+            <label for="largura">Largura total da janela</label>
+            <div class="input-wrap">
+              <input type="number" id="largura" value="1600" min="400" max="8000" step="50" />
+              <span class="unit">mm</span>
+            </div>
+          </div>
+          <div class="field">
+            <label for="folhas">Número de folhas</label>
+            <select id="folhas">
+              <option value="2" selected>2 folhas</option>
+              <option value="3">3 folhas</option>
+              <option value="4">4 folhas</option>
+              <option value="5">5 folhas</option>
+              <option value="6">6 folhas</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="alt_jan">Altura desejada da janela</label>
+            <div class="input-wrap">
+              <input type="number" id="alt_jan" value="1200" min="300" max="3000" step="50" />
+              <span class="unit">mm</span>
+            </div>
+          </div>
+          <div class="field">
+            <label for="alt_ed">Altura máx. do edifício</label>
+            <select id="alt_ed">
+              <option value="6">Até 6 m — 2 pav.</option>
+              <option value="15" selected>Até 15 m — 5 pav.</option>
+              <option value="30">Até 30 m — 10 pav.</option>
+              <option value="60">Até 60 m — 20 pav.</option>
+              <option value="90">Até 90 m — 30 pav.</option>
+            </select>
+          </div>
+          <div class="field full">
+            <label for="regiao">Região — isopleta NBR 6123</label>
+            <select id="regiao">
+              <option value="1">I — até 30 m/s (até 108 km/h)</option>
+              <option value="2">II — 30–35 m/s (108–126 km/h)</option>
+              <option value="3" selected>III — 35–40 m/s · Belo Horizonte</option>
+              <option value="4">IV — 40–45 m/s (144–162 km/h)</option>
+              <option value="5">V — 45–50 m/s (162–180 km/h)</option>
+            </select>
+          </div>
+        </div>
+      </section>
+
+      <section class="card" id="sec-perfis">
+        <p class="sec-label">Perfis utilizados — mão de amigo</p>
+        <div class="perfil-header">
+          <span>Nome</span>
+          <span>Área (mm²)</span>
+          <span>Jx (mm⁴)</span>
+          <span>Wx (mm³)</span>
+          <span>Ix (mm⁴)</span>
+          <span></span>
+        </div>
+        <div id="perfis-list"></div>
+        <button class="btn-add" id="btn-add-perfil">+ Adicionar perfil</button>
+        <div class="jx-total-row">
+          <span>Jx total combinado:</span>
+          <span class="jx-total-val" id="jx-total">—</span>
+        </div>
+      </section>
+
+      <div class="calc-action">
+        <button class="btn-calc" id="btn-calc">Calcular altura máxima</button>
+      </div>
+
+      <section class="result-section" id="result-section">
+        <p class="res-eyebrow">Altura máxima permitida</p>
+        <div class="res-main">
+          <span class="res-val" id="res-hmax">—</span>
+          <span class="res-unit">mm</span>
+        </div>
+        <span class="badge" id="res-badge">—</span>
+
+        <div class="bar-wrap">
+          <div class="bar-row">
+            <span>Utilização estrutural</span>
+            <span id="bar-pct">—</span>
+          </div>
+          <div class="bar-bg">
+            <div class="bar-fill" id="bar-fill"></div>
+          </div>
+        </div>
+
+        <div class="metrics">
+          <div class="metric">
+            <p class="m-lbl">Pressão de ensaio</p>
+            <p class="m-val" id="m-press">—</p>
+          </div>
+          <div class="metric">
+            <p class="m-lbl">Largura por folha</p>
+            <p class="m-val" id="m-folha">—</p>
+          </div>
+          <div class="metric">
+            <p class="m-lbl">Flecha máx. permitida</p>
+            <p class="m-val" id="m-flecha">—</p>
+          </div>
+          <div class="metric">
+            <p class="m-lbl">Jx total</p>
+            <p class="m-val" id="m-jx">—</p>
+          </div>
+          <div class="metric">
+            <p class="m-lbl">Altura inserida</p>
+            <p class="m-val" id="m-hinser">—</p>
+          </div>
+          <div class="metric">
+            <p class="m-lbl">Região</p>
+            <p class="m-val" id="m-regiao">—</p>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <footer class="page-footer">
+      <p>Cálculo baseado na ABNT NBR 10821-2017. Critério de flecha: H/175 ou 30 mm (o menor). Valores interpolados do gráfico do fabricante Gold Slim. Para projetos executivos, consulte o fabricante.</p>
+    </footer>
+
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
