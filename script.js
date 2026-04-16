@@ -91,12 +91,15 @@ function initNavigation() {
     item.addEventListener('click', (e) => {
       e.preventDefault();
       const targetId = item.getAttribute('data-target');
-      if(targetId) navigateTo(targetId);
+      if(targetId) window.location.hash = targetId;
     });
   });
 
-  // Troca ativamente as visualizações ocultando as inativas e atualizando o "migalhas de pão" (Breadcrumb)
-  function navigateTo(targetId) {
+  // O Motor de Roteamento! Escuta a URL e controla o DOM.
+  function applyRoute() {
+    let targetId = window.location.hash.substring(1);
+    if (!targetId || !document.getElementById(targetId)) return; // Ignora hashes/links mortos
+
     views.forEach(v => v.classList.remove('active'));
     menuItems.forEach(m => m.classList.remove('active'));
     
@@ -110,10 +113,19 @@ function initNavigation() {
     if(targetId === 'view-home') topTitle.textContent = 'Dashboard / Visão Geral';
     if(targetId === 'view-calc') topTitle.textContent = 'Ferramentas / Calculadora H. Máxima';
     if(targetId === 'view-trainings') topTitle.textContent = 'MyMetal / Treinamentos';
+    if(targetId === 'view-admin') topTitle.textContent = 'Gestão / Licenças';
     if(targetId === 'view-support') {
       topTitle.textContent = 'Atendimento / Suporte';
       if (typeof renderTickets === 'function') renderTickets();
     }
+  }
+
+  // Liga a escuta da API de Histórico do navegador (Faz as Setas de Voltar e Avançar funcionarem!)
+  window.addEventListener('hashchange', applyRoute);
+
+  // Mantém a antiga função navigateTo apontando para URL para nao quebrar cliques isolados
+  function navigateTo(targetId) {
+    window.location.hash = targetId;
   }
 }
 
@@ -888,13 +900,13 @@ function initFirebaseAuthUI() {
         // Atualiza SVGs dos botões no caso de recarga interna
         if (window.lucide) lucide.createIcons();
         
-        // RECICLAGEM E PROTEÇÃO VISUAL: Força a interface a recomeçar pela Home
-        document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-        document.querySelectorAll('.menu-item').forEach(m => m.classList.remove('active'));
-        const viewHome = document.getElementById('view-home');
-        if (viewHome) viewHome.classList.add('active');
-        const menuHome = document.querySelector('.menu-item[data-target="view-home"]');
-        if (menuHome) menuHome.classList.add('active');
+        // RECICLAGEM E PROTEÇÃO VISUAL URL: Limpa ou aciona o hash do navegador
+        if (!window.location.hash || window.location.hash === '' || window.location.hash === '#') {
+           window.location.hash = 'view-home';
+        } else {
+           // Força a tela a ser renderizada onde o cara parou se ele salvou o link ou recarregou
+           window.dispatchEvent(new Event('hashchange'));
+        }
         
         // Carrega sistema base
         initNavigation();
