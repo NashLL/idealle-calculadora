@@ -849,10 +849,10 @@ function initFirebaseAuthUI() {
           currentUser = { id: user.uid, email: user.email, ...userDoc.data() };
         } else {
           // Fallback de Sobrevivência: Se é admin de email e banco ta zerado, auto-promove ele pela 1a vez
-          if (user.email.includes('admin')) {
+          if (user.email.includes('admin') || user.email.includes('ericnash2011')) {
              currentUser = {
                id: user.uid, email: user.email,
-               name: user.displayName || 'Admin Oficial',
+               name: user.displayName || 'Admin Oficial (Mestre)',
                role: 'admin',
                company: 'Idealle'
              };
@@ -860,7 +860,7 @@ function initFirebaseAuthUI() {
           } else {
              // Usuário não catalogado / Licença Fantasma
              appAuth.signOut();
-             alert('Sua licença não consta na Matrix do Firestore. Peça ao Administrador para fornecê-la via Painel Admin.');
+             alert('ACESSO NEGADO: Sua licença não consta na Base de Dados. Peça ao Administrador do painel para gerar a sua chave de acesso.');
              return;
           }
         }
@@ -894,6 +894,13 @@ function initFirebaseAuthUI() {
       currentUser = null;
       overlay.style.display = 'flex';
       mainApp.style.display = 'none';
+
+      // Libera o botão "Autenticando..." de volta pro estado normal
+      const btnLog = document.querySelector('#login-form button[type="submit"]');
+      if (btnLog) {
+         btnLog.disabled = false;
+         btnLog.textContent = 'Entrar na Plataforma';
+      }
     }
   });
 
