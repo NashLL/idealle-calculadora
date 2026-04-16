@@ -23,6 +23,9 @@ let appAuth = firebase.auth();
 const secondaryApp = firebase.initializeApp(firebaseConfig, "Secondary");
 const secAuth = secondaryApp.auth();
 
+// Inicializa o Storage (Cofre de Arquivos)
+const storage = firebase.storage();
+
 /**
  * Tabela de pressões de ensaio baseada na norma ABNT NBR 10821-2017.
  * Mapeia a "Altura Máxima do Edifício" e a "Região (I a V)" para a Pressão de Vento (em Pa).
@@ -305,6 +308,18 @@ function timeAgo(dateString) {
   return `há ${diffInYears} ano${diffInYears > 1 ? 's' : ''}`;
 }
 
+/**
+ * Helper para subir arquivos ao Firebase Storage
+ * Retorna a URL de download definitiva
+ */
+async function uploadToStorage(file, folderPath) {
+  if (!file) return null;
+  const fileName = `${Date.now()}_${file.name}`;
+  const ref = storage.ref().child(`${folderPath}/${fileName}`);
+  const snapshot = await ref.put(file);
+  return await snapshot.ref.getDownloadURL();
+}
+
 let currentUser = null;
 
 let ticketFilters = {
@@ -467,14 +482,14 @@ function renderTimeline(ticket) {
     row.className = 't-reply ' + (isOwner ? 'admin-reply' : '');
     
     let attHtml = '';
-    if (r.attachmentName) {
+    if (r.attachmentName && r.attachmentUrl) {
       attHtml = `
       <div style="margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--border);">
-         <button onclick="alert('Iniciando o download seguro do arquivo: ${r.attachmentName}')" onmouseover="this.style.background='var(--surface)'" onmouseout="this.style.background='var(--surface-2)'" style="display: inline-flex; align-items: center; gap: 8px; background: var(--surface-2); border: 1px solid var(--border-strong); padding: 6px 12px; border-radius: var(--radius-md); cursor: pointer; transition: background 0.2s;">
+         <a href="${r.attachmentUrl}" target="_blank" onmouseover="this.style.background='var(--surface)'" onmouseout="this.style.background='var(--surface-2)'" style="display: inline-flex; align-items: center; gap: 8px; background: var(--surface-2); border: 1px solid var(--border-strong); padding: 6px 12px; border-radius: var(--radius-md); cursor: pointer; transition: background 0.2s; text-decoration: none;">
             <i data-lucide="paperclip" style="width: 14px; height: 14px; color: var(--text-secondary);"></i>
             <span style="font-size: 12px; font-weight: 500; color: var(--text-primary);">${r.attachmentName}</span>
             <i data-lucide="download" style="width: 14px; height: 14px; color: var(--accent); margin-left: 8px;"></i>
-         </button>
+         </a>
       </div>`;
     }
 
@@ -522,43 +537,72 @@ async function openTicketDetail(id) {
 
   // Set anexos
   const attWrap = document.getElementById('det-attachment-wrap');
-  if (t.attachmentName) {
+  const btnDownloadReal = document.getElementById('btn-download-anexo');
+  
+  if (t.attachmentName && t.attachmentUrl) {
     attWrap.style.display = 'block';
     document.getElementById('det-anexo-nome').textContent = t.attachmentName;
+    
+    // Configura o link real de download
+    if (btnDownloadReal) {
+      btnDownloadReal.onclick = function(e) {
+        e.preventDefault();
+        window.open(t.attachmentUrl, '_blank');
+      };
+    }
   } else {
     attWrap.style.display = 'none';
   }
 
   // Bind Formulario de Resposta
   const replyForm = document.getElementById('form-reply');
-  replyForm.onsubmit = function(e) {
+  replyForm.onsubmit = async function(e) {
     e.preventDefault();
     const txtArea = document.getElementById('reply-text');
     const replyFile = document.getElementById('reply-anexo');
     const msg = txtArea.value.trim();
+    const submitBtn = e.target.querySelector('button[type="submit"]');
     
     if (!msg && !replyFile.files[0]) return;
 
-    let attachedFile = null;
-    if (replyFile.files[0]) {
-      attachedFile = replyFile.files[0].name;
+    // Feedback de upload
+    const originalText = submitBtn.innerHTML;
+    submitBtn.innerHTML = 'Subindo arquivo...';
+    submitBtn.disabled = true;
+
+    try {
+      let attachmentUrl = null;
+      let attachmentName = null;
+      
+      if (replyFile.files[0]) {
+        attachmentName = replyFile.files[0].name;
+        attachmentUrl = await uploadToStorage(replyFile.files[0], `tickets/${t.id}/replies`);
+      }
+
+      if (!t.replies) t.replies = [];
+      t.replies.push({
+        author: currentUser.name,
+        role: currentUser.role,
+        date: new Date().toISOString(),
+        content: msg,
+        attachmentName: attachmentName,
+        attachmentUrl: attachmentUrl
+      });
+
+      await saveTicket(t, true);
+      
+      txtArea.value = '';
+      replyFile.value = '';
+      document.getElementById('reply-anexo-lbl').textContent = 'Anexar Arquivo';
+      renderTimeline(t);
+    } catch(err) {
+      console.error(err);
+      alert('Erro ao enviar resposta. Verifique sua conexão.');
+    } finally {
+      submitBtn.innerHTML = originalText;
+      submitBtn.disabled = false;
+      if (window.lucide) lucide.createIcons();
     }
-
-    if (!t.replies) t.replies = [];
-    t.replies.push({
-      author: currentUser.name,
-      role: currentUser.role,
-      date: new Date().toISOString(),
-      content: msg,
-      attachmentName: attachedFile
-    });
-
-    saveTicket(t, true);
-
-    txtArea.value = '';
-    replyFile.value = '';
-    document.getElementById('reply-anexo-lbl').textContent = 'Anexar Arquivo';
-    renderTimeline(t);
   };
 
   renderTimeline(t);
@@ -840,46 +884,60 @@ function initSupportControls() {
   }
 
   // Form submit
-  document.getElementById('form-ticket').addEventListener('submit', (e) => {
+  document.getElementById('form-ticket').addEventListener('submit', async (e) => {
     e.preventDefault();
     
-    const tickets = getTickets();
-    const newId = Date.now().toString();
-    const code = 'SUP-' + Math.floor(1000 + Math.random() * 9000); // Random SUP-XXXX
-
-    const newTicket = {
-      id: newId,
-      code: code,
-      authorId: currentUser.id,
-      requester: document.getElementById('tk-nome').value,
-      company: document.getElementById('tk-empresa').value,
-      title: document.getElementById('tk-titulo').value,
-      description: document.getElementById('tk-desc').value,
-      urgency: document.getElementById('tk-urgencia').value,
-      status: 'Em espera',
-      createdAt: new Date().toISOString(),
-      attachmentName: null,
-      replies: []
-    };
-
-    const fileInput = document.getElementById('tk-anexo');
-    if(fileInput.files.length > 0) {
-      newTicket.attachmentName = fileInput.files[0].name;
-    }
-
-    saveTicket(newTicket, false).then(() => {
-      renderTickets();
-    });
-
-    e.target.reset();
-    document.getElementById('tk-anexo-lbl').textContent = 'Escolher um arquivo...';
-    renderTickets();
-    switchSupportView('sup-view-list');
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
     
-    // Pequeno delay pra sensação de processamento
-    setTimeout(() => {
-        alert('Chamado ' + code + ' aberto com sucesso!');
-    }, 100);
+    const tickets = getTickets();
+    // Geramos um ID temporário apenas para a pasta do Bucket
+    const folderId = Date.now().toString();
+    const code = 'SUP-' + Math.floor(1000 + Math.random() * 9000); 
+
+    submitBtn.innerHTML = 'Enviando chamado e arquivos...';
+    submitBtn.disabled = true;
+
+    try {
+      const fileInput = document.getElementById('tk-anexo');
+      let attachmentUrl = null;
+      let attachmentName = null;
+
+      if(fileInput.files.length > 0) {
+        attachmentName = fileInput.files[0].name;
+        attachmentUrl = await uploadToStorage(fileInput.files[0], `tickets/${folderId}`);
+      }
+
+      const newTicket = {
+        code: code,
+        authorId: currentUser.id,
+        requester: document.getElementById('tk-nome').value,
+        company: document.getElementById('tk-empresa').value,
+        title: document.getElementById('tk-titulo').value,
+        description: document.getElementById('tk-desc').value,
+        urgency: document.getElementById('tk-urgencia').value,
+        status: 'Em espera',
+        createdAt: new Date().toISOString(),
+        attachmentName: attachmentName,
+        attachmentUrl: attachmentUrl,
+        replies: []
+      };
+
+      await saveTicket(newTicket, false);
+
+      e.target.reset();
+      document.getElementById('tk-anexo-lbl').textContent = 'Escolher um arquivo...';
+      renderTickets();
+      switchSupportView('sup-view-list');
+      
+      alert('Chamado ' + code + ' aberto com sucesso!');
+    } catch(err) {
+      console.error(err);
+      alert('Erro ao abrir chamado. Verifique se o arquivo respeita os limites.');
+    } finally {
+      submitBtn.innerHTML = originalText;
+      submitBtn.disabled = false;
+    }
   });
 }
 
