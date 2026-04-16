@@ -742,6 +742,7 @@ function initSupportControls() {
         alert('Chamado ' + code + ' aberto com sucesso!');
     }, 100);
   });
+}
 
 function initFirebaseAuthUI() {
   const overlay = document.getElementById('login-overlay');
