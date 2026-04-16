@@ -98,6 +98,13 @@
         <i data-lucide="hard-hat"></i>
         <span>Suporte</span>
       </a>
+      
+      <!-- APENAS ADMIN: Gestão de Usuários -->
+      <a href="#" class="menu-item" id="nav-item-admin" data-target="view-admin" style="display: none;">
+        <i data-lucide="users"></i>
+        <span>Licenças</span>
+      </a>
+
         <!-- Botão de Sair (Logout) -->
         <a href="#" id="btn-logout" class="menu-item" style="color: var(--danger-text); margin-top: 24px;">
           <i data-lucide="log-out"></i>
@@ -651,6 +658,86 @@
 
             </div>
           </div>
+        </div>
+      </section>
+
+      <!-- ==============================================
+           VIEW: GESTÃO DE ACESSOS E LICENÇAS (ADMIN ONLY)
+           ============================================== -->
+      <section id="view-admin" class="view" style="display: none;">
+        
+        <div class="page-header" style="margin-bottom: 24px;">
+          <h1 class="page-title">Licenças da Plataforma</h1>
+          <p class="page-sub">Gerencie quem tem o poder de acessar o MyMetal System e o Helpdesk.</p>
+        </div>
+
+        <div class="row" style="display: flex; gap: 24px; align-items: flex-start;">
+          
+          <!-- Formulário Criar Usuário -->
+          <div class="card" style="flex: 1; max-width: 350px;">
+            <h2 style="font-size: 16px; margin-bottom: 20px; font-weight: 500;">Fornecer Nova Licença</h2>
+            <form id="admin-create-user-form" style="display: flex; flex-direction: column; gap: 12px;">
+              <div class="field">
+                <label>Nome da Pessoa</label>
+                <div class="input-wrap">
+                  <input type="text" id="admin-u-nome" required placeholder="João da Silva" />
+                </div>
+              </div>
+              <div class="field">
+                <label>Empresa Pertencente</label>
+                <div class="input-wrap">
+                  <input type="text" id="admin-u-empresa" required placeholder="Vidraçaria Beta" />
+                </div>
+              </div>
+              <div class="field">
+                <label>E-mail de Acesso (Login)</label>
+                <div class="input-wrap">
+                  <input type="email" id="admin-u-email" required placeholder="joao@vidrabeta.com.br" />
+                </div>
+              </div>
+              <div class="field">
+                <label>Senha Inicial Definitiva</label>
+                <div class="input-wrap">
+                  <input type="password" id="admin-u-senha" required placeholder="Mínimo 6 dígitos" minlength="6" />
+                </div>
+              </div>
+              <div class="field">
+                <label>Permissão do Sistema</label>
+                <div class="input-wrap">
+                  <select id="admin-u-cargo" required>
+                    <option value="client">Somente Visualizar (Cliente)</option>
+                    <option value="admin">Acesso Total (Administrador)</option>
+                  </select>
+                </div>
+              </div>
+              
+              <button type="submit" class="btn-calc" style="height: 44px; margin-top: 10px;">
+                <span id="btn-create-u-txt">Gerar Licença e Salvar</span>
+              </button>
+              
+              <div id="admin-error" style="color: var(--danger-text); font-size: 13px; margin-top: 5px; display: none;"></div>
+              <div id="admin-success" style="color: var(--success); font-size: 13px; margin-top: 5px; display: none;">O funcionário já pode tentar logar.</div>
+            </form>
+          </div>
+
+          <!-- Tabela de Licenças Ativas -->
+          <div class="card" style="flex: 2; overflow-x: auto;">
+            <h2 style="font-size: 16px; margin-bottom: 20px; font-weight: 500;">Licenças Ativas</h2>
+            <table class="tk-table" style="width: 100%; border-collapse: collapse; text-align: left; font-size: 14px;">
+              <thead>
+                <tr style="border-bottom: 2px solid var(--border-light);">
+                  <th style="padding: 12px; color: var(--text-secondary);">Usuário</th>
+                  <th style="padding: 12px; color: var(--text-secondary);">E-mail Cadastrado</th>
+                  <th style="padding: 12px; color: var(--text-secondary);">Corporação / Empresa</th>
+                  <th style="padding: 12px; color: var(--text-secondary);">Cargo</th>
+                </tr>
+              </thead>
+              <tbody id="admin-users-list">
+                <!-- Gerado via JS Firestore -->
+              </tbody>
+            </table>
+          </div>
+          
         </div>
       </section>
 

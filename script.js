@@ -19,6 +19,10 @@ firebase.initializeApp(firebaseConfig);
 let db = firebase.firestore();
 let appAuth = firebase.auth();
 
+// Instância secundária secreta EXCLUSIVA para criação de contas sem deslogar o admin no front
+const secondaryApp = firebase.initializeApp(firebaseConfig, "Secondary");
+const secAuth = secondaryApp.auth();
+
 /**
  * Tabela de pressões de ensaio baseada na norma ABNT NBR 10821-2017.
  * Mapeia a "Altura Máxima do Edifício" e a "Região (I a V)" para a Pressão de Vento (em Pa).
@@ -563,6 +567,92 @@ async function updateTicketStatus(id, newStatus) {
   }
 }
 
+function initAdminPanel() {
+  const form = document.getElementById('admin-create-user-form');
+  const errorBox = document.getElementById('admin-error');
+  const successBox = document.getElementById('admin-success');
+  const btnTxt = document.getElementById('btn-create-u-txt');
+
+  // Listador Assíncrono da Tabela
+  async function loadUsersGrid() {
+    try {
+      const snap = await db.collection('users').get();
+      const tbody = document.getElementById('admin-users-list');
+      if (!tbody) return;
+      tbody.innerHTML = '';
+      
+      snap.forEach(doc => {
+        const u = doc.data();
+        const tr = document.createElement('tr');
+        tr.style.borderBottom = '1px solid var(--border-light)';
+        tr.innerHTML = `
+          <td style="padding: 12px;">${u.name || '(Sem Nome)'}</td>
+          <td style="padding: 12px; font-weight: 500;">${u.email}</td>
+          <td style="padding: 12px; color: var(--accent);">${u.company || '-'}</td>
+          <td style="padding: 12px;">
+            <span style="font-size: 11px; padding: 4px 8px; border-radius: 4px; font-weight: bold; background: ${u.role==='admin' ? 'var(--accent)' : 'var(--border-strong)'}; color: ${u.role==='admin' ? '#fff' : 'var(--text-primary)'};">
+              ${u.role === 'admin' ? 'Administrador' : 'Cliente'}
+            </span>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    } catch(e) { console.error('Erro na listagem', e); }
+  }
+
+  // Motor Criação de Licenças via Secondary App
+  if (form) {
+    form.onsubmit = async (e) => {
+      e.preventDefault();
+      errorBox.style.display = 'none'; successBox.style.display = 'none';
+      
+      const uNome = document.getElementById('admin-u-nome').value;
+      const uEmpresa = document.getElementById('admin-u-empresa').value;
+      const uEmail = document.getElementById('admin-u-email').value;
+      const uSenha = document.getElementById('admin-u-senha').value;
+      const uCargo = document.getElementById('admin-u-cargo').value;
+
+      btnTxt.textContent = 'Gerando Chave...';
+      const btnO = form.querySelector('button[type="submit"]');
+      btnO.disabled = true;
+
+      try {
+        // Cria usuário invisivelmente no Cofre do Auth Google sem te deslogar
+        const cred = await secAuth.createUserWithEmailAndPassword(uEmail, uSenha);
+        
+        // Cadastra o Perfil na coleção corporativa do Firestore
+        await db.collection('users').doc(cred.user.uid).set({
+          name: uNome,
+          company: uEmpresa,
+          email: uEmail,
+          role: uCargo,
+          createdAt: new Date().toISOString()
+        });
+
+        // Apaga o rastro da sessão da memória pra evitar conflitos
+        await secAuth.signOut();
+
+        successBox.style.display = 'block';
+        form.reset();
+        btnTxt.textContent = 'Gerar Licença e Salvar';
+        btnO.disabled = false;
+        
+        // Autorecarrega a tabela
+        loadUsersGrid(); 
+
+      } catch(error) {
+        errorBox.textContent = 'Erro de Rede Google: ' + error.code + ' - ' + error.message;
+        errorBox.style.display = 'block';
+        btnTxt.textContent = 'Gerar Licença e Salvar';
+        btnO.disabled = false;
+      }
+    };
+  }
+
+  // Dá o tiro inicial de relógio da tabela
+  loadUsersGrid();
+}
+
 function initSupportControls() {
   const selFilterClient = document.getElementById('filter-client');
   if (selFilterClient) {
@@ -749,24 +839,56 @@ function initFirebaseAuthUI() {
   const mainApp = document.getElementById('app-wrapper');
 
   // Listener de Estado Assíncrono (Rede Firebase)
-  appAuth.onAuthStateChanged(function(user) {
+  appAuth.onAuthStateChanged(async function(user) {
     if (user) {
-      // LOGADO: Destrava tudo e esconde tela de Login
-      currentUser = { 
-        id: user.uid, 
-        email: user.email,
-        name: user.displayName || user.email.split('@')[0],
-        role: user.email.includes('admin') ? 'admin' : 'client',
-        company: 'Empresa ' + user.email.split('@')[1] 
-      };
-      
-      overlay.style.display = 'none';
-      mainApp.style.display = 'flex';
-      
-      // Carrega sistema base
-      initNavigation();
-      renderPerfis();
-      initSupportControls();
+      // LOGADO: Buscar credencial oficial no Banco de Dados antes de abrir porta
+      try {
+        const userDoc = await db.collection('users').doc(user.uid).get();
+        
+        if (userDoc.exists) {
+          currentUser = { id: user.uid, email: user.email, ...userDoc.data() };
+        } else {
+          // Fallback de Sobrevivência: Se é admin de email e banco ta zerado, auto-promove ele pela 1a vez
+          if (user.email.includes('admin')) {
+             currentUser = {
+               id: user.uid, email: user.email,
+               name: user.displayName || 'Admin Oficial',
+               role: 'admin',
+               company: 'Idealle'
+             };
+             await db.collection('users').doc(user.uid).set(currentUser);
+          } else {
+             // Usuário não catalogado / Licença Fantasma
+             appAuth.signOut();
+             alert('Sua licença não consta na Matrix do Firestore. Peça ao Administrador para fornecê-la via Painel Admin.');
+             return;
+          }
+        }
+
+        // Toggles da interface visual de segurança baseado na Role
+        const navItemAdmin = document.getElementById('nav-item-admin');
+        if (currentUser.role === 'admin') {
+          if(navItemAdmin) navItemAdmin.style.display = 'flex';
+          initAdminPanel();
+        } else {
+          if(navItemAdmin) navItemAdmin.style.display = 'none';
+        }
+
+        overlay.style.display = 'none';
+        mainApp.style.display = 'flex';
+        
+        // Atualiza SVGs dos botões no caso de recarga interna
+        if (window.lucide) lucide.createIcons();
+        
+        // Carrega sistema base
+        initNavigation();
+        renderPerfis();
+        initSupportControls();
+      } catch(e) {
+        console.error(e);
+        alert('Erro ao checar permissões bloqueadas por segurança.');
+        appAuth.signOut();
+      }
     } else {
       // NÃO-LOGADO: Retorna fechadura e deleta vars em memoria local
       currentUser = null;
