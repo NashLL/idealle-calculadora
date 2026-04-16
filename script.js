@@ -100,6 +100,20 @@ function initNavigation() {
     let targetId = window.location.hash.substring(1);
     if (!targetId || !document.getElementById(targetId)) return; // Ignora hashes/links mortos
 
+    // SEGURANÇA DE ROTEADOR: Se o cara tentar digitar na URL, eu barro aqui
+    if (currentUser && currentUser.permissions) {
+       const p = currentUser.permissions;
+       let allowed = true;
+       if (targetId === 'view-calc' && !p.calc) allowed = false;
+       if (targetId === 'view-trainings' && !p.trainings) allowed = false;
+       if (targetId === 'view-support' && !p.support) allowed = false;
+       if (targetId === 'view-admin' && !p.admin) allowed = false;
+
+       if (!allowed) {
+          targetId = 'view-forbidden';
+       }
+    }
+
     views.forEach(v => v.classList.remove('active'));
     menuItems.forEach(m => m.classList.remove('active'));
     
@@ -601,14 +615,22 @@ function initAdminPanel() {
         const u = doc.data();
         const tr = document.createElement('tr');
         tr.style.borderBottom = '1px solid var(--border-light)';
+        
+        // Formata as permissões legíveis para a tabela
+        let pms = [];
+        if (u.permissions?.calc) pms.push('Calc');
+        if (u.permissions?.trainings) pms.push('Vídeos');
+        if (u.permissions?.support) pms.push('Suporte');
+        if (u.permissions?.admin) pms.push('Admin');
+
         tr.innerHTML = `
           <td style="padding: 12px;">${u.name || '(Sem Nome)'}</td>
           <td style="padding: 12px; font-weight: 500;">${u.email}</td>
           <td style="padding: 12px; color: var(--accent);">${u.company || '-'}</td>
           <td style="padding: 12px;">
-            <span style="font-size: 11px; padding: 4px 8px; border-radius: 4px; font-weight: bold; background: ${u.role==='admin' ? 'var(--accent)' : 'var(--border-strong)'}; color: ${u.role==='admin' ? '#fff' : 'var(--text-primary)'};">
-              ${u.role === 'admin' ? 'Administrador' : 'Cliente'}
-            </span>
+            <div style="display: flex; flex-wrap: wrap; gap: 4px;">
+              ${pms.map(p => `<span style="font-size: 10px; padding: 2px 6px; border-radius: 4px; background: var(--sidebar-bg); color: var(--text-secondary);">${p}</span>`).join('')}
+            </div>
           </td>
         `;
         tbody.appendChild(tr);
@@ -626,7 +648,13 @@ function initAdminPanel() {
       const uEmpresa = document.getElementById('admin-u-empresa').value;
       const uEmail = document.getElementById('admin-u-email').value;
       const uSenha = document.getElementById('admin-u-senha').value;
-      const uCargo = document.getElementById('admin-u-cargo').value;
+      
+      const permissions = {
+        calc: document.getElementById('perm-calc').checked,
+        trainings: document.getElementById('perm-trainings').checked,
+        support: document.getElementById('perm-support').checked,
+        admin: document.getElementById('perm-admin').checked
+      };
 
       btnTxt.textContent = 'Gerando Chave...';
       const btnO = form.querySelector('button[type="submit"]');
@@ -641,7 +669,8 @@ function initAdminPanel() {
           name: uNome,
           company: uEmpresa,
           email: uEmail,
-          role: uCargo,
+          role: permissions.admin ? 'admin' : 'client',
+          permissions: permissions,
           createdAt: new Date().toISOString()
         });
 
@@ -867,6 +896,16 @@ function initFirebaseAuthUI() {
         
         if (userDoc.exists) {
           currentUser = { id: user.uid, email: user.email, ...userDoc.data() };
+          
+          // Compatibilidade: Se usuário antigo não tem objeto 'permissions', criamos baseado na role antiga
+          if (!currentUser.permissions) {
+             currentUser.permissions = {
+               calc: true,
+               trainings: true,
+               support: true,
+               admin: currentUser.role === 'admin'
+             };
+          }
         } else {
           // Fallback de Sobrevivência: Se é admin de email e banco ta zerado, auto-promove ele pela 1a vez
           if (user.email.includes('admin') || user.email.includes('ericnash2011')) {
@@ -874,7 +913,8 @@ function initFirebaseAuthUI() {
                id: user.uid, email: user.email,
                name: user.displayName || 'Admin Oficial (Mestre)',
                role: 'admin',
-               company: 'Idealle'
+               company: 'Idealle',
+               permissions: { calc: true, trainings: true, support: true, admin: true }
              };
              await db.collection('users').doc(user.uid).set(currentUser);
           } else {
@@ -885,13 +925,24 @@ function initFirebaseAuthUI() {
           }
         }
 
-        // Toggles da interface visual de segurança baseado na Role
+        // Toggles da interface visual de segurança baseado nas PERMISSÕES GRANULARES
+        const p = currentUser.permissions;
+        
+        // Menus Individuais
+        if(document.getElementById('nav-item-calc')) document.getElementById('nav-item-calc').style.display = p.calc ? 'flex' : 'none';
+        if(document.getElementById('nav-item-trainings')) document.getElementById('nav-item-trainings').style.display = p.trainings ? 'flex' : 'none';
+        if(document.getElementById('nav-item-support')) document.getElementById('nav-item-support').style.display = p.support ? 'flex' : 'none';
+        
         const navItemAdmin = document.getElementById('nav-item-admin');
-        if (currentUser.role === 'admin') {
-          if(navItemAdmin) navItemAdmin.style.display = 'flex';
+        if(navItemAdmin) navItemAdmin.style.display = p.admin ? 'flex' : 'none';
+
+        // Grupos Inteiros (Categorias)
+        if(document.getElementById('grp-ferramentas')) document.getElementById('grp-ferramentas').style.display = p.calc ? 'block' : 'none';
+        if(document.getElementById('grp-mymetal')) document.getElementById('grp-mymetal').style.display = p.trainings ? 'block' : 'none';
+        if(document.getElementById('grp-suporte')) document.getElementById('grp-suporte').style.display = (p.support || p.admin) ? 'block' : 'none';
+
+        if (p.admin) {
           initAdminPanel();
-        } else {
-          if(navItemAdmin) navItemAdmin.style.display = 'none';
         }
 
         overlay.style.display = 'none';

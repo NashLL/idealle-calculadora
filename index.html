@@ -74,27 +74,27 @@
     </div>
 
     <!-- Categoria: Coleção de Ferramentas -->
-    <div class="menu-group">
+    <div class="menu-group" id="grp-ferramentas">
       <div class="menu-label">Ferramentas</div>
-      <a href="#" class="menu-item" data-target="view-calc">
+      <a href="#" class="menu-item" id="nav-item-calc" data-target="view-calc">
         <i data-lucide="calculator"></i>
         <span>Calculadora H. Máx.</span>
       </a>
     </div>
 
     <!-- Categoria: Setor Acoplado MyMetal System -->
-    <div class="menu-group">
+    <div class="menu-group" id="grp-mymetal">
       <div class="menu-label">MyMetal</div>
-      <a href="#" class="menu-item" data-target="view-trainings">
+      <a href="#" class="menu-item" id="nav-item-trainings" data-target="view-trainings">
         <i data-lucide="book-open"></i>
         <span>Treinamentos</span>
       </a>
     </div>
 
     <!-- Categoria: Atendimento ao Cliente -->
-    <div class="menu-group">
+    <div class="menu-group" id="grp-suporte">
       <div class="menu-label">Atendimento</div>
-      <a href="#" class="menu-item" data-target="view-support">
+      <a href="#" class="menu-item" id="nav-item-support" data-target="view-support">
         <i data-lucide="hard-hat"></i>
         <span>Suporte</span>
       </a>
@@ -123,18 +123,6 @@
     <!-- HEADER: Título fixo estético informando posição atual -->
     <header class="top-header">
       <div class="nav-breadcrumbs" id="top-title">Dashboard / Visão Geral</div>
-      <!-- User Switcher para Testes mockados -->
-      <div style="margin-left: auto; display: flex; align-items: center; gap: 10px;">
-        <label for="user-switcher"
-          style="font-size: 11px; font-weight: 500; text-transform: uppercase; color: var(--text-hint);">Logado
-          como:</label>
-        <select id="user-switcher"
-          style="padding: 6px 12px; border-radius: var(--radius-md); border: 1px solid var(--border-strong); font-size: 13px; background: var(--surface); color: var(--text-primary); outline: none; cursor: pointer;">
-          <option value="admin">Administrador (Ver Todos)</option>
-          <option value="cliente_alpha">João (Esquadrias Alpha)</option>
-          <option value="cliente_beta">Maria (Vidros Beta)</option>
-        </select>
-      </div>
     </header>
 
     <!-- CONTAINER SECUNDÁRIO PARA ACOMODAR AS ABAS DO USUÁRIO -->
@@ -661,6 +649,16 @@
         </div>
       </section>
 
+      <!-- VIEW Oculta de Fallback (Acesso Negado) -->
+      <section id="view-forbidden" class="view">
+        <div class="welcome-banner" style="background: var(--danger-bg); border: 1px solid red; text-align: center;">
+          <i data-lucide="shield-alert" style="color: red; width: 48px; height: 48px; margin-bottom: 16px;"></i>
+          <h1 style="color: red; font-size: 20px;">ACESSO NEGADO (ERRO 401)</h1>
+          <p style="color: #660000; font-weight: 500;">Sua licença não contempla os pacotes de permissão deste módulo protegido.</p>
+          <button class="btn-calc" style="max-width: 200px; margin: 20px auto 0 auto" onclick="window.location.hash='view-home'">Voltar ao Início</button>
+        </div>
+      </section>
+
       <!-- ==============================================
            VIEW: GESTÃO DE ACESSOS E LICENÇAS (ADMIN ONLY)
            ============================================== -->
@@ -702,12 +700,24 @@
                 </div>
               </div>
               <div class="field">
-                <label>Permissão do Sistema</label>
-                <div class="input-wrap">
-                  <select id="admin-u-cargo" required>
-                    <option value="client">Somente Visualizar (Cliente)</option>
-                    <option value="admin">Acesso Total (Administrador)</option>
-                  </select>
+                <label>Módulos Dinâmicos Liberados (Permissões)</label>
+                <div class="input-wrap" style="flex-direction: column; gap: 8px; font-size: 13px;">
+                  <label style="display: flex; gap: 8px; align-items: center; cursor: pointer;">
+                    <input type="checkbox" id="perm-calc" checked style="width:16px; height: 16px; cursor: pointer;" />
+                    Ferramentas (Calculadora HM)
+                  </label>
+                  <label style="display: flex; gap: 8px; align-items: center; cursor: pointer;">
+                    <input type="checkbox" id="perm-trainings" checked style="width:16px; height: 16px; cursor: pointer;" />
+                    Sistema MyMetal (Treinamentos)
+                  </label>
+                  <label style="display: flex; gap: 8px; align-items: center; cursor: pointer;">
+                    <input type="checkbox" id="perm-support" checked style="width:16px; height: 16px; cursor: pointer;" />
+                    Atendimento (Abertura de Chamados)
+                  </label>
+                  <label style="display: flex; gap: 8px; align-items: center; cursor: pointer; border-top: 1px solid var(--border-light); padding-top: 8px; margin-top: 4px;">
+                    <input type="checkbox" id="perm-admin" style="width:16px; height: 16px; cursor: pointer;" />
+                    <span style="color: var(--accent); font-weight: bold;">Gestor de Licenças (Sub-Admin)</span>
+                  </label>
                 </div>
               </div>
               
