@@ -880,6 +880,14 @@ function initFirebaseAuthUI() {
         // Atualiza SVGs dos botões no caso de recarga interna
         if (window.lucide) lucide.createIcons();
         
+        // RECICLAGEM E PROTEÇÃO VISUAL: Força a interface a recomeçar pela Home
+        document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+        document.querySelectorAll('.menu-item').forEach(m => m.classList.remove('active'));
+        const viewHome = document.getElementById('view-home');
+        if (viewHome) viewHome.classList.add('active');
+        const menuHome = document.querySelector('.menu-item[data-target="view-home"]');
+        if (menuHome) menuHome.classList.add('active');
+        
         // Carrega sistema base
         initNavigation();
         renderPerfis();
