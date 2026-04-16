@@ -322,6 +322,10 @@ async function uploadToStorage(file, folderPath) {
 
 let currentUser = null;
 
+// Estados Globais de Upload em segundo plano
+let pendingTicketFile = null;
+let pendingReplyFile = null;
+
 let ticketFilters = {
   text: '',
   sort: 'desc',
@@ -559,45 +563,36 @@ async function openTicketDetail(id) {
   replyForm.onsubmit = async function(e) {
     e.preventDefault();
     const txtArea = document.getElementById('reply-text');
-    const replyFile = document.getElementById('reply-anexo');
     const msg = txtArea.value.trim();
     const submitBtn = e.target.querySelector('button[type="submit"]');
     
-    if (!msg && !replyFile.files[0]) return;
+    if (!msg && !pendingReplyFile) return;
 
-    // Feedback de upload
     const originalText = submitBtn.innerHTML;
-    submitBtn.innerHTML = 'Subindo arquivo...';
+    submitBtn.innerHTML = 'Enviando...';
     submitBtn.disabled = true;
 
     try {
-      let attachmentUrl = null;
-      let attachmentName = null;
-      
-      if (replyFile.files[0]) {
-        attachmentName = replyFile.files[0].name;
-        attachmentUrl = await uploadToStorage(replyFile.files[0], `tickets/${t.id}/replies`);
-      }
-
       if (!t.replies) t.replies = [];
       t.replies.push({
         author: currentUser.name,
         role: currentUser.role,
         date: new Date().toISOString(),
         content: msg,
-        attachmentName: attachmentName,
-        attachmentUrl: attachmentUrl
+        attachmentName: pendingReplyFile ? pendingReplyFile.name : null,
+        attachmentUrl: pendingReplyFile ? pendingReplyFile.url : null
       });
 
       await saveTicket(t, true);
       
       txtArea.value = '';
-      replyFile.value = '';
+      pendingReplyFile = null; // Limpa estado
       document.getElementById('reply-anexo-lbl').textContent = 'Anexar Arquivo';
+      document.getElementById('reply-anexo-lbl').style.color = 'inherit';
       renderTimeline(t);
     } catch(err) {
       console.error(err);
-      alert('Erro ao enviar resposta. Verifique sua conexão.');
+      alert('Erro ao enviar resposta.');
     } finally {
       submitBtn.innerHTML = originalText;
       submitBtn.disabled = false;
@@ -843,42 +838,89 @@ function initSupportControls() {
     });
   }
 
-  // Reply Attachment limit logic
-  const replyAnexo = document.getElementById('reply-anexo');
-  if(replyAnexo) {
-    replyAnexo.addEventListener('change', (e) => {
-      const file = e.target.files[0];
-      const lbl = document.getElementById('reply-anexo-lbl');
-      if (file) {
-        if (file.size > 5 * 1024 * 1024) {
-          alert('O arquivo excede o limite de 5MB. Escolha outro menor.');
+  // Upload visual hint & Limit logic (Agora com Upload Real em Background)
+  const tkAnexo = document.getElementById('tk-anexo');
+  if(tkAnexo) {
+    tkAnexo.addEventListener('change', async (e) => {
+      const lbl = document.getElementById('tk-anexo-lbl');
+      const submitBtn = document.querySelector('#form-ticket button[type="submit"]');
+
+      if (e.target.files.length > 0) {
+        const file = e.target.files[0];
+        if (file.size > 5 * 1024 * 1024) { 
+          alert('Arquivo excedeu o limite de 5MB.');
           e.target.value = '';
-          lbl.textContent = 'Anexar Arquivo';
-        } else {
-          lbl.textContent = file.name;
+          lbl.textContent = 'Escolher um arquivo...';
+          return;
+        }
+
+        // Inicia Upload Imediato
+        const originalLabel = lbl.textContent;
+        lbl.textContent = 'Enviando ao Google...';
+        lbl.style.color = 'var(--accent)';
+        if (submitBtn) {
+          submitBtn.disabled = true;
+          submitBtn.textContent = 'Aguardando Upload...';
+        }
+
+        try {
+          // Usamos um ID de pasta temporário
+          const tempId = Date.now().toString();
+          const url = await uploadToStorage(file, `tickets/temp_${tempId}`);
+          pendingTicketFile = { name: file.name, url: url };
+          
+          lbl.textContent = '✓ ' + file.name;
+          lbl.style.color = 'var(--success-text)';
+        } catch (err) {
+          console.error(err);
+          lbl.textContent = 'Erro no upload. Tente novamente.';
+          lbl.style.color = 'var(--danger-text)';
+          pendingTicketFile = null;
+        } finally {
+          if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Abrir Chamado';
+          }
         }
       } else {
-        lbl.textContent = 'Anexar Arquivo';
+        lbl.textContent = 'Escolher um arquivo...';
+        lbl.style.color = 'inherit';
+        pendingTicketFile = null;
       }
     });
   }
 
-  // Upload visual hint & Limit logic
-  const tkAnexo = document.getElementById('tk-anexo');
-  if(tkAnexo) {
-    tkAnexo.addEventListener('change', (e) => {
-      const lbl = document.getElementById('tk-anexo-lbl');
-      if (e.target.files.length > 0) {
-        const file = e.target.files[0];
-        if (file.size > 5 * 1024 * 1024) { // 5MB Limit
-          alert('Arquivo excedeu o limite de 5MB. Por favor escolha um arquivo menor.');
-          e.target.value = ''; // clears the input
-          lbl.textContent = 'Escolher um arquivo...';
-        } else {
-          lbl.textContent = file.name;
+  // Reply Attachment listener (Background Upload)
+  const replyAnexo = document.getElementById('reply-anexo');
+  if(replyAnexo) {
+    replyAnexo.addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      const lbl = document.getElementById('reply-anexo-lbl');
+      const submitBtn = e.target.closest('form')?.querySelector('button[type="submit"]');
+
+      if (file) {
+        if (file.size > 5 * 1024 * 1024) {
+          alert('Arquivo excedeu 5MB.');
+          e.target.value = '';
+          return;
         }
-      } else {
-        lbl.textContent = 'Escolher um arquivo...';
+
+        lbl.textContent = 'Subindo...';
+        lbl.style.color = 'var(--accent)';
+        if (submitBtn) submitBtn.disabled = true;
+
+        try {
+          const url = await uploadToStorage(file, `replies/temp_${Date.now()}`);
+          pendingReplyFile = { name: file.name, url: url };
+          lbl.textContent = '✓ ' + file.name;
+          lbl.style.color = 'var(--success-text)';
+        } catch (err) {
+          lbl.textContent = 'Erro!';
+          lbl.style.color = 'var(--danger-text)';
+          pendingReplyFile = null;
+        } finally {
+          if (submitBtn) submitBtn.disabled = false;
+        }
       }
     });
   }
@@ -890,24 +932,12 @@ function initSupportControls() {
     const submitBtn = e.target.querySelector('button[type="submit"]');
     const originalText = submitBtn.innerHTML;
     
-    const tickets = getTickets();
-    // Geramos um ID temporário apenas para a pasta do Bucket
-    const folderId = Date.now().toString();
     const code = 'SUP-' + Math.floor(1000 + Math.random() * 9000); 
 
-    submitBtn.innerHTML = 'Enviando chamado e arquivos...';
+    submitBtn.innerHTML = 'Gravando chamado...';
     submitBtn.disabled = true;
 
     try {
-      const fileInput = document.getElementById('tk-anexo');
-      let attachmentUrl = null;
-      let attachmentName = null;
-
-      if(fileInput.files.length > 0) {
-        attachmentName = fileInput.files[0].name;
-        attachmentUrl = await uploadToStorage(fileInput.files[0], `tickets/${folderId}`);
-      }
-
       const newTicket = {
         code: code,
         authorId: currentUser.id,
@@ -918,22 +948,25 @@ function initSupportControls() {
         urgency: document.getElementById('tk-urgencia').value,
         status: 'Em espera',
         createdAt: new Date().toISOString(),
-        attachmentName: attachmentName,
-        attachmentUrl: attachmentUrl,
+        attachmentName: pendingTicketFile ? pendingTicketFile.name : null,
+        attachmentUrl: pendingTicketFile ? pendingTicketFile.url : null,
         replies: []
       };
 
       await saveTicket(newTicket, false);
 
       e.target.reset();
+      pendingTicketFile = null; // Limpa para o próximo
       document.getElementById('tk-anexo-lbl').textContent = 'Escolher um arquivo...';
+      document.getElementById('tk-anexo-lbl').style.color = 'inherit';
+      
       renderTickets();
       switchSupportView('sup-view-list');
       
       alert('Chamado ' + code + ' aberto com sucesso!');
     } catch(err) {
       console.error(err);
-      alert('Erro ao abrir chamado. Verifique se o arquivo respeita os limites.');
+      alert('Erro ao abrir chamado.');
     } finally {
       submitBtn.innerHTML = originalText;
       submitBtn.disabled = false;
