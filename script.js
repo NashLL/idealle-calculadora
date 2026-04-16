@@ -951,13 +951,12 @@ function initFirebaseAuthUI() {
         // Atualiza SVGs dos botões no caso de recarga interna
         if (window.lucide) lucide.createIcons();
         
-        // RECICLAGEM E PROTEÇÃO VISUAL URL: Limpa ou aciona o hash do navegador
-        if (!window.location.hash || window.location.hash === '' || window.location.hash === '#') {
-           window.location.hash = 'view-home';
-        } else {
-           // Força a tela a ser renderizada onde o cara parou se ele salvou o link ou recarregou
-           window.dispatchEvent(new Event('hashchange'));
-        }
+        // RECICLAGEM E PROTEÇÃO VISUAL URL: Sempre reseta para a Home no Login
+        // Isso evita que um usuário sem permissão herde o link (#view-admin) de uma sessão anterior
+        window.location.hash = 'view-home';
+        
+        // Força a renderização imediata da Home caso o browser demore a disparar o evento
+        window.dispatchEvent(new Event('hashchange'));
         
         // Carrega sistema base
         initNavigation();
