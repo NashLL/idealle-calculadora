@@ -1,149 +1,680 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
+
 <head>
+  <!-- Metadados Ocultos que dão contexto à Navegação -->
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Calculadora de Esquadrias — NBR 10821-2017</title>
-  <link rel="stylesheet" href="style.css" />
+
+  <title>Plataforma Esquadrias & MyMetal</title>
+
+  <!-- Fontes Geométricas Minimalistas (Google Fonts) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500&display=swap" rel="stylesheet">
+
+  <!-- Onde puxaremos o motor de CSS do Visual -->
+  <link rel="stylesheet" href="style.css?v=3" />
+
+  <!-- Instancia pacotes de de ícones de interface 'Lucide' em versão Open Source pelo CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
 </head>
+
 <body>
 
-  <div class="page-wrap">
-
-    <header class="page-header">
-      <p class="page-eyebrow">NBR 10821-2017</p>
-      <h1 class="page-title">Calculadora de Altura Máxima</h1>
-      <p class="page-sub">Resistência às cargas de vento</p>
-    </header>
-
-    <main class="main-grid">
-
-      <section class="card" id="sec-esquadria">
-        <p class="sec-label">Dados da esquadria</p>
-        <div class="grid2">
-          <div class="field">
-            <label for="largura">Largura total da janela</label>
-            <div class="input-wrap">
-              <input type="number" id="largura" value="1600" min="400" max="8000" step="50" />
-              <span class="unit">mm</span>
-            </div>
-          </div>
-          <div class="field">
-            <label for="folhas">Número de folhas</label>
-            <select id="folhas">
-              <option value="2" selected>2 folhas</option>
-              <option value="3">3 folhas</option>
-              <option value="4">4 folhas</option>
-              <option value="5">5 folhas</option>
-              <option value="6">6 folhas</option>
-            </select>
-          </div>
-          <div class="field">
-            <label for="alt_jan">Altura desejada da janela</label>
-            <div class="input-wrap">
-              <input type="number" id="alt_jan" value="1200" min="300" max="3000" step="50" />
-              <span class="unit">mm</span>
-            </div>
-          </div>
-          <div class="field">
-            <label for="alt_ed">Altura máx. do edifício</label>
-            <select id="alt_ed">
-              <option value="6">Até 6 m — 2 pav.</option>
-              <option value="15" selected>Até 15 m — 5 pav.</option>
-              <option value="30">Até 30 m — 10 pav.</option>
-              <option value="60">Até 60 m — 20 pav.</option>
-              <option value="90">Até 90 m — 30 pav.</option>
-            </select>
-          </div>
-          <div class="field full">
-            <label for="regiao">Região — isopleta NBR 6123</label>
-            <select id="regiao">
-              <option value="1">I — até 30 m/s (até 108 km/h)</option>
-              <option value="2">II — 30–35 m/s (108–126 km/h)</option>
-              <option value="3" selected>III — 35–40 m/s (126–144 km/h)</option>
-              <option value="4">IV — 40–45 m/s (144–162 km/h)</option>
-              <option value="5">V — 45–50 m/s (162–180 km/h)</option>
-            </select>
+  <!-- ==============================================
+       SISTEMA DE AUTENTICAÇÃO (LOGIN FIREBASE)
+       ============================================== -->
+  <div id="login-overlay" style="position: fixed; inset: 0; background: var(--bg); display: flex; align-items: center; justify-content: center; z-index: 9999;">
+    <div class="card" style="width: 100%; max-width: 400px; padding: 40px; text-align: center;">
+      <h2 style="margin-bottom: 24px; font-weight: 500; color: var(--text-primary);">Acesso Restrito</h2>
+      <p style="font-size: 14px; color: var(--text-secondary); margin-bottom: 24px;">Insira suas credenciais para acessar a plataforma.</p>
+      
+      <form id="login-form" style="display: flex; flex-direction: column; gap: 16px;">
+        <div class="field" style="text-align: left;">
+          <label style="font-size: 13px; margin-bottom: 8px;">E-mail Corporativo</label>
+          <div class="input-wrap">
+            <input type="email" id="login-email" required placeholder="nome@empresa.com.br" />
           </div>
         </div>
-      </section>
-
-      <section class="card" id="sec-perfis">
-        <p class="sec-label">Perfis utilizados</p>
-        <div class="perfil-header">
-          <span>Nome</span>
-          <span>Área (mm²)</span>
-          <span>Jx (mm⁴)</span>
-          <span>Wx (mm³)</span>
-          <span>Ix (mm⁴)</span>
-          <span></span>
-        </div>
-        <div id="perfis-list"></div>
-        <button class="btn-add" id="btn-add-perfil">+ Adicionar perfil</button>
-        <div class="jx-total-row">
-          <span>Jx total combinado:</span>
-          <span class="jx-total-val" id="jx-total">—</span>
-        </div>
-      </section>
-
-      <div class="calc-action">
-        <button class="btn-calc" id="btn-calc">Calcular altura máxima</button>
-      </div>
-
-      <section class="result-section" id="result-section">
-        <p class="res-eyebrow">Altura máxima permitida</p>
-        <div class="res-main">
-          <span class="res-val" id="res-hmax">—</span>
-          <span class="res-unit">mm</span>
-        </div>
-        <span class="badge" id="res-badge">—</span>
-
-        <div class="bar-wrap">
-          <div class="bar-row">
-            <span>Utilização estrutural</span>
-            <span id="bar-pct">—</span>
-          </div>
-          <div class="bar-bg">
-            <div class="bar-fill" id="bar-fill"></div>
+        <div class="field" style="text-align: left;">
+          <label style="font-size: 13px; margin-bottom: 8px;">Senha de Acesso</label>
+          <div class="input-wrap">
+            <input type="password" id="login-senha" required placeholder="••••••••" />
           </div>
         </div>
-
-        <div class="metrics">
-          <div class="metric">
-            <p class="m-lbl">Pressão de ensaio</p>
-            <p class="m-val" id="m-press">—</p>
-          </div>
-          <div class="metric">
-            <p class="m-lbl">Largura por folha</p>
-            <p class="m-val" id="m-folha">—</p>
-          </div>
-          <div class="metric">
-            <p class="m-lbl">Flecha máx. permitida</p>
-            <p class="m-val" id="m-flecha">—</p>
-          </div>
-          <div class="metric">
-            <p class="m-lbl">Jx total</p>
-            <p class="m-val" id="m-jx">—</p>
-          </div>
-          <div class="metric">
-            <p class="m-lbl">Altura inserida</p>
-            <p class="m-val" id="m-hinser">—</p>
-          </div>
-          <div class="metric">
-            <p class="m-lbl">Região</p>
-            <p class="m-val" id="m-regiao">—</p>
-          </div>
-        </div>
-      </section>
-
-    </main>
-
-    <footer class="page-footer">
-      <p>Cálculo baseado na ABNT NBR 10821-2017. Critério de flecha: H/175 ou 30 mm (o menor). Valores interpolados do gráfico do fabricante Gold Slim. Para projetos executivos, consulte o fabricante.</p>
-    </footer>
-
+        <button type="submit" class="btn-calc" style="height: 44px; margin-top: 10px;">Entrar na Plataforma</button>
+      </form>
+      <div id="login-error" style="color: var(--danger-text); font-size: 13px; margin-top: 16px; display: none;">Credenciais inválidas. Tente novamente.</div>
+    </div>
   </div>
 
+  <!-- WRAPPER DA PLATAFORMA (Só aparece se logado) -->
+  <div id="app-wrapper" style="display: none; height: 100vh; width: 100vw; overflow: hidden; display: flex;">
+
+  <!-- ==============================================
+       MENU LATERAL DE NAVEGAÇÃO SUPERIOR DO SISTEMA
+       ============================================== -->
+  <nav class="sidebar">
+    <!-- Logotipo / Identificação Gráfica da Plataforma -->
+    <div class="sidebar-brand">
+      <img src="Logo.svg" alt="Logo MyMetal" class="brand-logo" />
+    </div>
+
+    <!-- Categoria: Menu Principal Básico -->
+    <div class="menu-group">
+      <div class="menu-label">Principal</div>
+
+      <!-- Classe '.active' dita qual destas é a aba em uso -->
+      <!-- O atributo 'data-target' mapeia o container ID (view-xxx) atrelado no JavaScript -->
+      <a href="#" class="menu-item active" data-target="view-home">
+        <i data-lucide="layout-dashboard"></i>
+        <span>Dashboard</span>
+      </a>
+    </div>
+
+    <!-- Categoria: Coleção de Ferramentas -->
+    <div class="menu-group">
+      <div class="menu-label">Ferramentas</div>
+      <a href="#" class="menu-item" data-target="view-calc">
+        <i data-lucide="calculator"></i>
+        <span>Calculadora H. Máx.</span>
+      </a>
+    </div>
+
+    <!-- Categoria: Setor Acoplado MyMetal System -->
+    <div class="menu-group">
+      <div class="menu-label">MyMetal</div>
+      <a href="#" class="menu-item" data-target="view-trainings">
+        <i data-lucide="book-open"></i>
+        <span>Treinamentos</span>
+      </a>
+    </div>
+
+    <!-- Categoria: Atendimento ao Cliente -->
+    <div class="menu-group">
+      <div class="menu-label">Atendimento</div>
+      <a href="#" class="menu-item" data-target="view-support">
+        <i data-lucide="hard-hat"></i>
+        <span>Suporte</span>
+      </a>
+        <!-- Botão de Sair (Logout) -->
+        <a href="#" id="btn-logout" class="menu-item" style="color: var(--danger-text); margin-top: 24px;">
+          <i data-lucide="log-out"></i>
+          Encerrar Sessão
+        </a>
+
+      </div>
+    </nav>
+
+  <!-- ==============================================
+       CONTAINER DA JANELA PRINCIPAL COMPLETA
+       (Recebe os dados roteados enquanto a barra lateral fica intacta)
+       ============================================== -->
+  <main class="content-area">
+
+    <!-- HEADER: Título fixo estético informando posição atual -->
+    <header class="top-header">
+      <div class="nav-breadcrumbs" id="top-title">Dashboard / Visão Geral</div>
+      <!-- User Switcher para Testes mockados -->
+      <div style="margin-left: auto; display: flex; align-items: center; gap: 10px;">
+        <label for="user-switcher"
+          style="font-size: 11px; font-weight: 500; text-transform: uppercase; color: var(--text-hint);">Logado
+          como:</label>
+        <select id="user-switcher"
+          style="padding: 6px 12px; border-radius: var(--radius-md); border: 1px solid var(--border-strong); font-size: 13px; background: var(--surface); color: var(--text-primary); outline: none; cursor: pointer;">
+          <option value="admin">Administrador (Ver Todos)</option>
+          <option value="cliente_alpha">João (Esquadrias Alpha)</option>
+          <option value="cliente_beta">Maria (Vidros Beta)</option>
+        </select>
+      </div>
+    </header>
+
+    <!-- CONTAINER SECUNDÁRIO PARA ACOMODAR AS ABAS DO USUÁRIO -->
+    <div class="views-container">
+
+      <!-- =========================================
+           PAINEL 1: DASHBOARD INICIAL / VISÃO GLOBAL
+           ========================================= -->
+      <section id="view-home" class="view active">
+        <!-- Banner Físico Primário -->
+        <div class="welcome-banner">
+          <h1>Bem-vindo à sua nova plataforma!</h1>
+          <p>Acesse rapidamente suas ferramentas de esquadrias ou estude com os treinamentos MyMetal usando o menu
+            lateral.</p>
+        </div>
+
+        <!-- Placas de Cartões de Atalhos rápidos em malha quadricular -->
+        <div class="home-grid">
+
+          <div class="home-card" data-action="view-calc">
+            <div class="hc-icon" style="background-color: var(--light-blue); color: var(--accent);"><i
+                data-lucide="calculator"></i></div>
+            <h3>Calculadora NBR 10821-2017</h3>
+            <p>Calcule a altura máxima e a força do vento baseadas nas normativas do setor.</p>
+          </div>
+
+          <div class="home-card" data-action="view-trainings">
+            <div class="hc-icon" style="background-color: var(--accent-bg); color: var(--accent);"><i
+                data-lucide="book-open"></i></div>
+            <h3>Treinamentos MyMetal</h3>
+            <p>Em breve: Acesso exclusivo aos cursos e tutoriais para elaboração de orçamentos precisos.</p>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- =========================================
+           PAINEL 2: MÓDULO DA CALCULADORA NBR DE ESQUADRIA
+           ========================================= -->
+      <section id="view-calc" class="view">
+        <div class="page-wrap">
+          <!-- Textos Introdutórios do Assunto do Painel Base -->
+          <header class="page-header">
+            <p class="page-eyebrow">NBR 10821-2017</p>
+            <h1 class="page-title">Calculadora de Altura Máxima</h1>
+            <p class="page-sub">Resistência arquitetônica às cargas de vento</p>
+          </header>
+
+          <div class="main-grid">
+            <!-- Setor 01 - Input Manual de Tamanhos e Referências Físicas da Instalação do Cliente -->
+            <section class="card" id="sec-esquadria">
+              <p class="sec-label">Dados do caixilho</p>
+
+              <!-- Tabela em grade com os campos digitáveis -->
+              <div class="grid2">
+                <div class="field">
+                  <label for="largura">Largura total do caixilho</label>
+                  <div class="input-wrap">
+                    <input type="number" id="largura" value="1600" min="400" max="8000" step="50" />
+                    <span class="unit">mm</span>
+                  </div>
+                </div>
+
+                <div class="field">
+                  <label for="folhas">Número de folhas</label>
+                  <select id="folhas">
+                    <option value="2" selected>2 folhas</option>
+                    <option value="3">3 folhas</option>
+                    <option value="4">4 folhas</option>
+                    <option value="5">5 folhas</option>
+                  </select>
+                </div>
+
+                <div class="field">
+                  <label for="alt_jan">Altura desejada do caixilho</label>
+                  <div class="input-wrap">
+                    <input type="number" id="alt_jan" value="1200" min="300" max="3000" step="50" />
+                    <span class="unit">mm</span>
+                  </div>
+                </div>
+
+                <div class="field">
+                  <label for="alt_ed">Altura máx. do edifício</label>
+                  <select id="alt_ed">
+                    <option value="6">Até 6 m — 2 pav.</option>
+                    <option value="15" selected>Até 15 m — 5 pav.</option>
+                    <option value="30">Até 30 m — 10 pav.</option>
+                    <option value="60">Até 60 m — 20 pav.</option>
+                    <option value="90">Até 90 m — 30 pav.</option>
+                  </select>
+                </div>
+
+                <div class="field full">
+                  <label for="regiao">Região — isopleta NBR 6123</label>
+                  <select id="regiao">
+                    <option value="1">I — até 30 m/s (até 108 km/h)</option>
+                    <option value="2">II — 30–35 m/s (108–126 km/h)</option>
+                    <option value="3" selected>III — 35–40 m/s (126–144 km/h)</option>
+                    <option value="4">IV — 40–45 m/s (144–162 km/h)</option>
+                    <option value="5">V — 45–50 m/s (162–180 km/h)</option>
+                  </select>
+                </div>
+              </div>
+            </section>
+
+            <!-- Setor 02 - Selecionáveis Relacionados às Tabelas de Tipos de Alumínio (Injetado via JS) -->
+            <section class="card" id="sec-perfis">
+              <p class="sec-label">Perfis utilizados</p>
+
+              <div class="perfil-header">
+                <span>Nome</span>
+                <span>Área (mm²)</span>
+                <span>Jx (mm⁴)</span>
+                <span>Wx (mm³)</span>
+                <span>Ix (mm⁴)</span>
+                <span></span>
+              </div>
+
+              <!-- Local que receberá os arquivos construídos nativos do laço do Script -->
+              <div id="perfis-list"></div>
+
+              <!-- Aciona script para botar novo array de alumínio -->
+              <button class="btn-add" id="btn-add-perfil"><i data-lucide="plus"
+                  style="width: 14px; height: 14px; margin-right: 4px;"></i> Adicionar perfil</button>
+
+              <!-- Totalizador das Somatórias (Jx) -->
+              <div class="jx-total-row">
+                <span>Jx total combinado:</span>
+                <span class="jx-total-val" id="jx-total">—</span>
+              </div>
+            </section>
+
+            <!-- Setor 03 - Execução da Ação Principal -->
+            <div class="calc-action">
+              <button class="btn-calc" id="btn-calc">Calcular altura máxima</button>
+            </div>
+
+            <!-- Setor 04 - Painel Secreto: Visualização de Resposta e Diagnóstico Técnico. Só vira aparente com o JS aplicando `class="visible"`  -->
+            <section class="result-section" id="result-section">
+              <p class="res-eyebrow">Altura máxima permitida</p>
+
+              <div class="res-main">
+                <span class="res-val" id="res-hmax">—</span>
+                <span class="res-unit">mm</span>
+              </div>
+
+              <!-- Notificador colorido dinâmico de Aprovado / Reprovado -->
+              <span class="badge" id="res-badge">—</span>
+
+              <!-- Indicador Numérico Visual percentual da resistência empregue do alumínio contra a altura requisitada -->
+              <div class="bar-wrap">
+                <div class="bar-row">
+                  <span>Utilização estrutural</span>
+                  <span id="bar-pct">—</span>
+                </div>
+                <div class="bar-bg">
+                  <div class="bar-fill" id="bar-fill"></div>
+                </div>
+              </div>
+
+              <!-- Cartões Pequenos detalháveis secundários do cálculo das premissas usadas -->
+              <div class="metrics">
+                <div class="metric">
+                  <p class="m-lbl">Pressão de ensaio</p>
+                  <p class="m-val" id="m-press">—</p>
+                </div>
+                <div class="metric">
+                  <p class="m-lbl">Largura por folha</p>
+                  <p class="m-val" id="m-folha">—</p>
+                </div>
+                <div class="metric">
+                  <p class="m-lbl">Flecha máx. permitida</p>
+                  <p class="m-val" id="m-flecha">—</p>
+                </div>
+                <div class="metric">
+                  <p class="m-lbl">Jx total</p>
+                  <p class="m-val" id="m-jx">—</p>
+                </div>
+                <div class="metric">
+                  <p class="m-lbl">Altura inserida</p>
+                  <p class="m-val" id="m-hinser">—</p>
+                </div>
+                <div class="metric">
+                  <p class="m-lbl">Região</p>
+                  <p class="m-val" id="m-regiao">—</p>
+                </div>
+              </div>
+            </section>
+          </div>
+
+          <footer class="page-footer">
+            <p>Cálculo baseado na ABNT NBR 10821-2017. Critério de flecha: H/175 ou 30 mm (o menor). Valores
+              padronizados. Para projetos executivos, consulte seu engenheiro calculista ou o fabricante de sistemas.
+            </p>
+          </footer>
+        </div>
+      </section>
+
+      <!-- =========================================
+           PAINEL 3: ESPAÇO PARA O MODELO EDUCACIONAL (EM BREVE)
+           ========================================= -->
+      <section id="view-trainings" class="view">
+        <!-- 'Empty State' significa um layout que orienta o usuário de que nada falhou, mas aquele repositório ainda não fora implementado ou povoado -->
+        <div class="empty-state">
+          <div class="empty-icon-wrap">
+            <i data-lucide="video"></i>
+          </div>
+          <h2>Aulas em Breve</h2>
+          <p>A área de treinamentos voltados para o software MyMetal será disponibilizada em breve. Volte novamente mais
+            tarde para conferir as novidades!</p>
+          <button class="btn-secondary" data-action="view-home">Voltar ao Início</button>
+        </div>
+      </section>
+
+      <!-- =========================================
+           PAINEL 4: SUPORTE E HELPDESK
+           ========================================= -->
+      <section id="view-support" class="view">
+        <div class="page-wrap">
+          <header id="support-main-header" class="page-header"
+            style="display: flex; justify-content: space-between; align-items: flex-start;">
+            <div>
+              <p class="page-eyebrow">Atendimento</p>
+              <h1 class="page-title">Central de Suporte</h1>
+              <p class="page-sub">Acompanhe seus chamados ou abra uma nova solicitação.</p>
+            </div>
+            <!-- Botões Rápidos Acima -->
+            <button class="btn-calc" id="btn-new-ticket"
+              style="height: 40px; padding: 0 20px; font-size: 14px; display: inline-flex; align-items: center; justify-content: center;">+
+              Novo Chamado</button>
+          </header>
+
+          <!-- CONTEÚDO PRINCIPAL DIVIDIDO EM 3 "MÓDULOS" (Views Internas controladas via JS) -->
+          <div id="sup-view-list" class="sup-internal-view active">
+            <!-- Barra de Pesquisa de Tickets -->
+            <div class="card"
+              style="margin-bottom: 24px; padding: 1rem 1.5rem; display: flex; gap: 16px; align-items: center;">
+              <i data-lucide="search" style="color: var(--text-hint);"></i>
+              <input type="text" id="ticket-search" placeholder="Buscar pelo Código do Chamado ou Assunto..."
+                style="flex: 1; border: none; outline: none; font-size: 15px; background: transparent; color: var(--text-primary);" />
+            </div>
+
+            <!-- Lista de Resultados (Grid Tabela) -->
+            <div class="card" style="padding: 0; overflow: hidden; margin-bottom: 24px;">
+              <div class="table-header"
+                style="display: grid; grid-template-columns: 100px 2fr 1fr 140px 140px; gap: 16px; padding: 12px 24px; background: var(--surface-2); border-bottom: 1px solid var(--border); font-size: 11px; font-weight: 500; color: var(--text-hint); text-transform: uppercase;">
+                <button class="th-sort" data-sort="code"
+                  style="background:none; border:none; color:inherit; text-align:left; cursor:pointer; font:inherit; display:flex; align-items:center; gap:4px; padding:0;">Código
+                  <i data-lucide="arrow-down-up" style="width:12px; height:12px; opacity:0.3"
+                    class="sort-icon"></i></button>
+                <button class="th-sort" data-sort="title"
+                  style="background:none; border:none; color:inherit; text-align:left; cursor:pointer; font:inherit; display:flex; align-items:center; gap:4px; padding:0;">Título
+                  do Chamado <i data-lucide="arrow-down-up" style="width:12px; height:12px; opacity:0.3"
+                    class="sort-icon"></i></button>
+                <button class="th-sort" data-sort="requester"
+                  style="background:none; border:none; color:inherit; text-align:left; cursor:pointer; font:inherit; display:flex; align-items:center; gap:4px; padding:0;">Solicitante
+                  <i data-lucide="arrow-down-up" style="width:12px; height:12px; opacity:0.3"
+                    class="sort-icon"></i></button>
+                <button class="th-sort" data-sort="createdAt"
+                  style="background:none; border:none; color:var(--text-primary); text-align:left; cursor:pointer; font:inherit; display:flex; align-items:center; gap:4px; padding:0;">Data
+                  <i data-lucide="arrow-down" style="width:12px; height:12px; opacity:1" class="sort-icon"></i></button>
+                <button class="th-sort" data-sort="status"
+                  style="background:none; border:none; color:inherit; text-align:left; cursor:pointer; font:inherit; display:flex; align-items:center; gap:4px; padding:0;">Status
+                  <i data-lucide="arrow-down-up" style="width:12px; height:12px; opacity:0.3"
+                    class="sort-icon"></i></button>
+              </div>
+              <div id="ticket-list" class="ticket-list-body">
+                <!-- Vazio por padrão, preenchido via JS -->
+              </div>
+            </div>
+
+            <!-- Filtros de Status e Cliente na Base da Tela -->
+            <div class="card"
+              style="padding: 20px; display: flex; flex-wrap: wrap; gap: 24px; align-items: center; justify-content: space-between;">
+              <!-- Checkboxes de Status -->
+              <div style="flex: 2; min-width: 300px;">
+                <label
+                  style="font-size: 11px; font-weight: 500; color: var(--text-hint); text-transform: uppercase; margin-bottom: 8px; display: block;">Mostrar
+                  Status</label>
+                <div style="display: flex; gap: 16px; flex-wrap: wrap;" id="filter-status-group">
+                  <label
+                    style="display: inline-flex; align-items: center; gap: 6px; font-size: 13px; cursor: pointer; color: var(--text-secondary);"><input
+                      type="checkbox" value="Em espera" checked> Em espera</label>
+                  <label
+                    style="display: inline-flex; align-items: center; gap: 6px; font-size: 13px; cursor: pointer; color: var(--text-secondary);"><input
+                      type="checkbox" value="Em desenvolvimento" checked> Em dev.</label>
+                  <label
+                    style="display: inline-flex; align-items: center; gap: 6px; font-size: 13px; cursor: pointer; color: var(--text-secondary);"><input
+                      type="checkbox" value="Aguardando resposta" checked> Aguardando</label>
+                  <label
+                    style="display: inline-flex; align-items: center; gap: 6px; font-size: 13px; cursor: pointer; color: var(--text-secondary);"><input
+                      type="checkbox" value="Respondido" checked> Respondido</label>
+                  <label
+                    style="display: inline-flex; align-items: center; gap: 6px; font-size: 13px; cursor: pointer; color: var(--text-secondary);"><input
+                      type="checkbox" value="Encerrado"> Encerrado</label>
+                </div>
+              </div>
+
+              <!-- Clientes (Só visível se Admin) -->
+              <div id="filter-client-wrap" style="flex: 1; min-width: 200px; display: none;">
+                <label
+                  style="font-size: 11px; font-weight: 500; color: var(--text-hint); text-transform: uppercase; margin-bottom: 6px; display: block;">Filtrar
+                  por Solicitante</label>
+                <select id="filter-client"
+                  style="width: 100%; height: 36px; padding: 0 12px; border-radius: var(--radius-md); border: 1px solid var(--border-strong); background: var(--surface); font-size: 13px; outline: none; color: var(--text-primary);">
+                  <option value="all">Todos</option>
+                  <!-- Preenchido via gerador JS baseado nos dados -->
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Formulário Criar Novo Chamado -->
+          <div id="sup-view-form" class="sup-internal-view">
+            <div class="card">
+              <p class="sec-label">Abertura de Chamado</p>
+              <form id="form-ticket" class="grid2" style="gap: 20px;">
+                <!-- Solicitante -->
+                <div class="field full">
+                  <label for="tk-nome">Quem abriu o chamado (Nome Completo)</label>
+                  <input type="text" id="tk-nome" required readonly
+                    style="background-color: var(--surface-2); color: var(--text-secondary); cursor: not-allowed;" />
+                </div>
+
+                <div class="field full">
+                  <label for="tk-empresa">Empresa Solicitante</label>
+                  <input type="text" id="tk-empresa" required readonly
+                    style="background-color: var(--surface-2); color: var(--text-secondary); cursor: not-allowed;" />
+                </div>
+
+                <div class="field full">
+                  <label for="tk-titulo">Título / Resumo do Problema</label>
+                  <input type="text" id="tk-titulo" required placeholder="Descreva brevemente o motivo do contato" />
+                </div>
+
+                <div class="field full">
+                  <label for="tk-desc">Descrição Detalhada do Chamado</label>
+                  <textarea id="tk-desc" required
+                    placeholder="Descreva todo o ocorrido ou solicitação com o máximo de detalhes."
+                    style="height: 120px; border: 1px solid var(--border-strong); border-radius: var(--radius-md); padding: 12px; font-size: 14px; font-family: inherit; resize: vertical; outline: none; transition: border-color 0.2s, box-shadow 0.2s;"
+                    onfocus="this.style.borderColor='var(--accent)'; this.style.boxShadow='0 0 0 3px rgba(249, 115, 22, 0.15)'"
+                    onblur="this.style.borderColor='var(--border-strong)'; this.style.boxShadow='none'"></textarea>
+                </div>
+
+                <div class="field">
+                  <label for="tk-urgencia">Nível de Urgência</label>
+                  <select id="tk-urgencia" required>
+                    <option value="Baixa">Baixa - Duvida / Sugestão</option>
+                    <option value="Média" selected>Média - Operação Prejudicada</option>
+                    <option value="Alta">Alta - Funcionalidade Crítica Parada</option>
+                    <option value="Crítica">Crítica - Sistema Fora do Ar</option>
+                  </select>
+                </div>
+
+                <div class="field">
+                  <label for="tk-anexo">Anexar Arquivos (Opcional - Máx: 5MB)</label>
+                  <div
+                    style="position: relative; display: flex; align-items: center; border: 1px dashed var(--border-strong); border-radius: var(--radius-md); padding: 6px 12px; background: var(--surface-2);">
+                    <input type="file" id="tk-anexo"
+                      style="opacity: 0; position: absolute; left: 0; top: 0; width: 100%; height: 100%; cursor: pointer;" />
+                    <i data-lucide="upload-cloud"
+                      style="width: 16px; height: 16px; color: var(--text-hint); margin-right: 8px;"></i>
+                    <span id="tk-anexo-lbl"
+                      style="font-size: 13px; color: var(--text-secondary); pointer-events: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;">Escolher
+                      um arquivo...</span>
+                  </div>
+                </div>
+
+                <div class="field full" style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 10px;">
+                  <button type="button" class="btn-secondary" id="btn-cancel-ticket">Cancelar</button>
+                  <button type="submit" class="btn-calc" style="height: 40px; padding: 0 24px; font-size: 14px;">Abrir
+                    Chamado</button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <!-- Painel Gerenciar Chamado Específico -->
+          <div id="sup-view-detail" class="sup-internal-view">
+            <div style="margin-bottom: 1rem; display: flex; align-items: center; justify-content: space-between;">
+              <a href="#" id="btn-back-tickets"
+                style="font-size: 13px; color: var(--text-secondary); text-decoration: none; display: inline-flex; align-items: center; gap: 6px; transition: color 0.2s;"
+                onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--text-secondary)'"><i
+                  data-lucide="arrow-left" style="width: 14px; height: 14px;"></i> Voltar para Lista</a>
+            </div>
+
+            <div class="ticket-detail-grid">
+
+              <!-- COLUNA ESQUERDA: Timeline e Conteúdo Principal -->
+              <div class="td-main" style="background: var(--surface); border: 1px solid var(--border); padding: 32px;">
+                <!-- Descrição Original Simplificada e Direta -->
+                <div style="margin-bottom: 32px; padding-bottom: 24px; border-bottom: 1px solid var(--border);">
+                  <div
+                    style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px;">
+                    <h2 id="det-title"
+                      style="font-size: 20px; font-weight: 500; color: var(--text-primary); margin: 0; line-height: 1.3;">
+                      ---</h2>
+                    <span id="det-desc-date"
+                      style="font-size: 11px; color: var(--text-hint); white-space: nowrap; margin-left: 16px;">---</span>
+                  </div>
+                  <div style="margin-bottom: 16px; font-size: 13px; color: var(--text-secondary);">
+                    Por <strong id="det-desc-author" style="font-weight: 500; color: var(--text-primary)">---</strong>
+                    (<span id="det-sub-company">---</span>)
+                  </div>
+                  <div id="det-desc"
+                    style="font-size: 14px; line-height: 1.6; color: var(--text-primary); white-space: pre-wrap; word-wrap: break-word; overflow-wrap: anywhere; hyphens: auto;">
+                    ---</div>
+                  <!-- Elemento redundante mantido oculto caso o script.js puxe o ID diretamente -->
+                  <span id="det-top-requester" style="display:none;">---</span>
+                </div>
+
+                <!-- Lista de Tratativas (As respostas) -->
+                <div id="tk-timeline" class="t-timeline" style="margin-bottom: 16px;">
+                  <!-- Renderizadas via JS -->
+                </div>
+
+                <!-- Input Nova Resposta -->
+                <div class="card" style="border-top-left-radius: 4px; border-top-right-radius: 4px; padding: 16px;">
+                  <form id="form-reply" style="display: flex; flex-direction: column; gap: 12px;">
+                    <textarea id="reply-text" required placeholder="Escreva uma resposta..."
+                      style="height: 100px; border: 1px solid var(--border-strong); border-radius: var(--radius-md); padding: 12px; font-size: 14px; font-family: inherit; resize: vertical; outline: none; background: var(--surface-2); transition: border-color 0.2s;"
+                      onfocus="this.style.borderColor='var(--accent)'"
+                      onblur="this.style.borderColor='var(--border-strong)'"></textarea>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                      <div>
+                        <label for="reply-anexo"
+                          style="display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-secondary); cursor: pointer; padding: 6px 10px; border-radius: var(--radius-md); transition: background 0.2s;"
+                          onmouseover="this.style.background='var(--surface-2)'"
+                          onmouseout="this.style.background='transparent'"><i data-lucide="paperclip"
+                            style="width: 16px; height: 16px;"></i> <span id="reply-anexo-lbl">Anexar
+                            Arquivo</span></label>
+                        <input type="file" id="reply-anexo" style="display: none;" />
+                      </div>
+                      <button type="submit" class="btn-calc"
+                        style="height: 36px; padding: 0 20px; font-size: 13px; gap: 6px; display: inline-flex; align-items: center;"><i
+                          data-lucide="send" style="width: 14px; height: 14px;"></i> Enviar Resposta</button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+
+              <!-- COLUNA DIREITA: Gerencial e Metadados -->
+              <div class="td-sidebar">
+                <div class="card" style="padding: 20px;">
+
+                  <!-- Bloco Superior: Código e Status -->
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                      <span id="det-code"
+                        style="font-family: monospace; font-size: 15px; font-weight: 500; color: var(--accent); background: var(--surface-2); padding: 4px 8px; border-radius: 4px;">#---</span>
+                      <button id="btn-copy-code"
+                        style="background: transparent; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--text-hint); transition: color 0.2s;"
+                        onmouseover="this.style.color='var(--text-primary)'"
+                        onmouseout="this.style.color='var(--text-hint)'" title="Copiar ID do Chamado">
+                        <i data-lucide="copy" style="width: 16px; height: 16px;"></i>
+                      </button>
+                    </div>
+                    <span id="det-urgency" class="badge">---</span>
+                  </div>
+
+                  <div style="margin-bottom: 20px; padding-bottom: 20px; border-bottom: 1px solid var(--border);">
+                    <label
+                      style="font-size: 11px; font-weight: 500; color: var(--text-hint); text-transform: uppercase; margin-bottom: 6px; display: block;">Status
+                      do Chamado</label>
+                    <select id="det-status-select"
+                      style="height: 36px; padding: 0 12px; width: 100%; font-size: 13px; border-radius: var(--radius-md); border: 1px solid var(--border-strong); outline: none; background: var(--surface); color: var(--text-primary); cursor: pointer;">
+                      <option value="Em espera">Em espera</option>
+                      <option value="Em desenvolvimento">Em desenvolvimento</option>
+                      <option value="Aguardando resposta">Aguardando resposta</option>
+                      <option value="Respondido">Respondido</option>
+                      <option value="Encerrado">Encerrado</option>
+                    </select>
+                  </div>
+
+                  <!-- Atribuição / Responsável -->
+                  <div style="margin-bottom: 20px; padding-bottom: 20px; border-bottom: 1px solid var(--border);">
+                    <label
+                      style="font-size: 11px; font-weight: 500; color: var(--text-hint); text-transform: uppercase; margin-bottom: 6px; display: block;">Responsável
+                      pelo Chamado</label>
+                    <select id="det-assignee-select"
+                      style="height: 36px; padding: 0 12px; width: 100%; font-size: 13px; border-radius: var(--radius-md); border: 1px solid var(--border-strong); outline: none; background: var(--surface); color: var(--text-primary); cursor: pointer;">
+                      <option value="">Não atribuído</option>
+                      <option value="adm_carlos">Carlos (Suporte N1)</option>
+                      <option value="adm_lucas">Lucas (Suporte Avançado)</option>
+                      <option value="adm_renata">Renata (Faturamento)</option>
+                    </select>
+                  </div>
+
+                  <!-- Detalhes Físicos -->
+                  <div style="display: flex; flex-direction: column; gap: 16px; margin-bottom: 24px;">
+                    <div>
+                      <label
+                        style="font-size: 11px; color: var(--text-hint); text-transform: uppercase; font-weight: 500; display: block; margin-bottom: 2px;">Data
+                        da Abertura</label>
+                      <p id="det-date" style="font-size: 13px; color: var(--text-primary);">---</p>
+                    </div>
+                  </div>
+
+                  <!-- Anexo -->
+                  <div id="det-attachment-wrap"
+                    style="display: none; padding-top: 20px; border-top: 1px dashed var(--border);">
+                    <label
+                      style="font-size: 11px; color: var(--text-hint); text-transform: uppercase; font-weight: 500; display: block; margin-bottom: 8px;">Arquivo
+                      Anexo</label>
+                    <button id="btn-download-anexo" onmouseover="this.style.background='var(--surface)'"
+                      onmouseout="this.style.background='var(--surface-2)'"
+                      style="display: flex; width: 100%; align-items: center; justify-content: space-between; background: var(--surface-2); border: 1px solid var(--border-strong); padding: 10px 12px; border-radius: var(--radius-md); cursor: pointer; transition: background 0.2s;">
+                      <div style="display: flex; align-items: center; gap: 8px; overflow: hidden;">
+                        <i data-lucide="paperclip"
+                          style="width: 14px; height: 14px; color: var(--text-secondary); flex-shrink: 0;"></i>
+                        <span id="det-anexo-nome"
+                          style="font-size: 12px; font-weight: 400; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">arquivo.pdf</span>
+                      </div>
+                      <i data-lucide="download"
+                        style="width: 14px; height: 14px; color: var(--accent); flex-shrink: 0;"></i>
+                    </button>
+                  </div>
+
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  </div> <!-- FIM DO APP WRAPPER -->
+
+  <!-- ==============================================
+       ENXERTO DE SCRIPTS AO FINAL DO DOCUMENTO
+       ============================================== -->
+
+  <!-- CARREGANDO O MÓDULO DO FIREBASE COMPATÍVEL (NUVEM) -->
+  <script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore-compat.js"></script>
+
+  <!-- Carregamento do sistema construtivo principal logico -->
   <script src="script.js"></script>
+
+  <!-- Disparo ordenado para que o conversor transformador das Tags "<i class="icon">" da bliblioteca 'Lucide' se transformem imediatamente em imagens SVGs injetadas no site de forma vetorizada nativa -->
+  <script>
+    lucide.createIcons();
+  </script>
 </body>
+
 </html>

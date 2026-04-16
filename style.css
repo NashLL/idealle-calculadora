@@ -1,45 +1,371 @@
-*, *::before, *::after {
+/**
+ * Reset Universal Básico - Evita conflitos de dimensão e padding
+ */
+*,
+*::before,
+*::after {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
 }
 
+/**
+ * Raiz de Definição do Sistema de Cores e Estilos dinâmicos (Design System)
+ * Recheado pelas cores da paleta solicitada (Cinza Azulado, Laranja, Azul Claro e Cinza Claro)
+ */
 :root {
-  --bg: #f5f4f1;
+  /* Tons de Fundo (Backgrounds) */
+  --bg: #EDF2F7;
+  /* Fundo Principal - Escurecido para que as caixas brancas sobressaiam brutalmente */
+  --sidebar-bg: #E2E8F0;
+  /* Fundo Secundário usado na lateral */
   --surface: #ffffff;
-  --surface-2: #f0efe9;
-  --border: rgba(0,0,0,0.10);
-  --border-strong: rgba(0,0,0,0.20);
-  --text-primary: #1a1a18;
-  --text-secondary: #5f5e5a;
-  --text-hint: #9a9890;
-  --accent: #185fa5;
-  --accent-bg: #e6f1fb;
-  --accent-text: #0c447c;
-  --success-bg: #eaf3de;
-  --success-text: #3b6d11;
-  --warn-bg: #faeeda;
-  --warn-text: #854f0b;
-  --danger-bg: #fcebeb;
-  --danger-text: #a32d2d;
-  --radius-md: 8px;
-  --radius-lg: 12px;
-  --radius-xl: 16px;
+  /* Brancura pura para os Cartões (Cards) na GUI */
+  --surface-2: #F8FAFC;
+  /* Efeito de interatividade leve ao fazer Hover (fundo 2) */
+
+  /* Borda, Limites e Sombras estruturais - Mais nítidas para delimitar espaços */
+  --border: rgba(15, 23, 42, 0.12);
+  --border-strong: rgba(15, 23, 42, 0.25);
+
+  /* Textos Monocromáticos Azulados (Cinza Azulado) */
+  --text-primary: #1E293B;
+  /* Títulos Claros, Cinza com saturação Azul bem marcante */
+  --text-secondary: #475569;
+  /* Cinza Base que não fere os olhos em parágrafos densos */
+  --text-hint: #94A3B8;
+  /* Letra para pequenos dados adicionais ou desabilitados */
+
+  /* Tons de Destaque Vibrante e Call to Actions (Laranja) */
+  --accent: #F97316;
+  /* Nosso Laranja principal na Paleta de Ações */
+  --accent-hover: #EA580C;
+  /* Laranja de Reação para clique ativo */
+  --accent-bg: #FFF7ED;
+  /* Background cor pêssego/Laranja desbotado para áreas ativas */
+
+  /* Tons de Brincadeira/Highlighting interativo (Azul Claro) */
+  --light-blue: #E0F2FE;
+  --light-blue-dark: #0284C7;
+
+  /* Respostas da Calculadora Físicas (Semáforos) */
+  --success-bg: #DCFCE7;
+  --success-text: #166534;
+  --warn-bg: #FEF9C3;
+  --warn-text: #854D0E;
+  --danger-bg: #FEE2E2;
+  --danger-text: #991B1B;
+
+  /* Arredondamento Consistente do Layout */
+  --radius-md: 0px;
+  --radius-lg: 0px;
+  --radius-xl: 0px;
+
+  /* Definições Arquitetônicas da Grade */
+  --sidebar-width: 250px;
 }
 
+/**
+ * Escopo Global do Body
+ */
 body {
   background: var(--bg);
   color: var(--text-primary);
-  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  font-family: 'Outfit', system-ui, -apple-system, sans-serif;
+  font-weight: 300;
   font-size: 15px;
   line-height: 1.6;
-  min-height: 100vh;
+  height: 100vh;
+  display: flex;
+  overflow: hidden;
+  /* Foca a rolagem puramente dentro da Main Content */
 }
+
+/* =================================================================================
+ * SIDEBAR (MENU DE NAVEGAÇÃO LATERAL)
+ * ================================================================================= */
+
+.sidebar {
+  width: var(--sidebar-width);
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  padding: 0 1rem 1.5rem;
+  z-index: 10;
+  box-shadow: 2px 0 10px rgba(0, 0, 0, 0.02);
+}
+
+/* Identidade visual da marca acima da navegação */
+.sidebar-brand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 96px;
+  margin-bottom: 1.5rem;
+  padding: 0 0.5rem;
+}
+
+/* Otimização da imagem da logo anexada */
+.brand-logo {
+  max-width: 100%;
+  height: auto;
+  max-height: 56px;
+  /* Mantém ela proporcional e não exagera no tamanho */
+  object-fit: contain;
+  mix-blend-mode: multiply;
+  /* Truque poderoso: remove fundo branco puro caso a imagem enviada por upload contiver um! */
+}
+
+/* Agrupadores lógicos de link (Princial X Ferramentas) */
+.menu-group {
+  margin-bottom: 1.5rem;
+}
+
+.menu-label {
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  color: var(--text-hint);
+  margin-bottom: 0.75rem;
+  padding: 0 0.5rem;
+  letter-spacing: 0.05em;
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  text-decoration: none;
+  color: var(--text-secondary);
+  font-weight: 400;
+  border-radius: var(--radius-md);
+  margin-bottom: 4px;
+  transition: all 0.2s ease;
+}
+
+.menu-item i {
+  width: 18px;
+  height: 18px;
+  transition: all 0.2s;
+}
+
+.menu-item:hover {
+  background: var(--surface-2);
+  color: var(--text-primary);
+}
+
+.menu-item.active {
+  background: var(--accent-bg);
+  color: var(--accent);
+}
+
+.menu-item.active i {
+  color: var(--accent);
+  transform: scale(1.1);
+}
+
+/* =================================================================================
+ * ÁREA PRINCIPAL E SISTEMA DE VISUALIZAÇÕES
+ * ================================================================================= */
+
+.content-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.top-header {
+  height: 96px;
+  /* Aumentado para alinhar matematicamente o centro visual transversal com a Logo Lateral */
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  display: flex;
+  align-items: center;
+  padding: 0 2rem;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.01);
+  z-index: 5;
+}
+
+/* Barra Mapeadora de Visão Ativa */
+.nav-breadcrumbs {
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--text-secondary);
+}
+
+/* Contêiner Escalonador dos Módulos Funcionais */
+.views-container {
+  flex: 1;
+  overflow-y: auto;
+  padding: 2rem;
+  position: relative;
+}
+
+.view {
+  display: none;
+  animation: fadeIn 0.4s ease forwards;
+}
+
+.view.active {
+  display: block;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* =================================================================================
+ * SESSÃO: DASHBOARD (HOME VIEW)
+ * ================================================================================= */
+
+.welcome-banner {
+  background: linear-gradient(135deg, var(--light-blue), #ffffff);
+  border: 1px solid var(--light-blue-dark);
+  border-radius: var(--radius-lg);
+  padding: 2rem;
+  margin-bottom: 2rem;
+}
+
+.welcome-banner h1 {
+  font-size: 24px;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+.welcome-banner p {
+  color: var(--text-secondary);
+  font-size: 15px;
+}
+
+.home-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+}
+
+/* Placas do Dashboard com efeito Lift de Profundidade */
+.home-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  flex-direction: column;
+}
+
+.home-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 4px 10px rgba(0,0,0,0.02);
+  border-color: var(--accent);
+}
+
+.hc-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1rem;
+}
+
+.hc-icon i {
+  width: 24px;
+  height: 24px;
+}
+
+.home-card h3 {
+  font-size: 16px;
+  margin-bottom: 8px;
+  color: var(--text-primary);
+}
+
+.home-card p {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+/* =================================================================================
+ * SESSÃO: TREINAMENTOS MYMETAL (VAZIA NO MOMENTO)
+ * ================================================================================= */
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 60vh;
+  text-align: center;
+  max-width: 400px;
+  margin: 0 auto;
+}
+
+.empty-icon-wrap {
+  width: 80px;
+  height: 80px;
+  background: var(--surface-2);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1.5rem;
+  color: var(--text-hint);
+}
+
+.empty-icon-wrap i {
+  width: 40px;
+  height: 40px;
+}
+
+.empty-state h2 {
+  font-size: 20px;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+.empty-state p {
+  color: var(--text-secondary);
+  font-size: 14px;
+  margin-bottom: 1.5rem;
+}
+
+.btn-secondary {
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  padding: 10px 20px;
+  border-radius: var(--radius-md);
+  font-weight: 400;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-secondary:hover {
+  background: var(--surface-2);
+  color: var(--text-primary);
+}
+
+
+/* =================================================================================
+ * SESSÃO: COMPONENTE DA CALCULADORA NBR-10821-2017
+ * ================================================================================= */
 
 .page-wrap {
   max-width: 780px;
   margin: 0 auto;
-  padding: 2.5rem 1.5rem 3rem;
 }
 
 .page-header {
@@ -71,14 +397,20 @@ body {
 .main-grid {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 16px;
 }
 
+/* Blocos divisórios dos Imputs */
 .card {
   background: var(--surface);
-  border: 0.5px solid var(--border);
+  border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   padding: 1.25rem 1.5rem;
+  transition: box-shadow 0.3s ease;
+}
+
+.card:hover {
+  border-color: var(--border-strong);
 }
 
 .sec-label {
@@ -90,16 +422,17 @@ body {
   margin-bottom: 14px;
 }
 
+/* Colunas Flexíveis Base e Unidades dos Inputs de Cálculo */
 .grid2 {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12px;
+  gap: 16px;
 }
 
 .field {
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 6px;
 }
 
 .field.full {
@@ -108,23 +441,24 @@ body {
 
 .field label {
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 400;
   color: var(--text-secondary);
 }
 
 .input-wrap {
   display: flex;
   align-items: center;
-  border: 0.5px solid var(--border-strong);
+  border: 1px solid var(--border-strong);
   border-radius: var(--radius-md);
   overflow: hidden;
   background: var(--surface);
+  transition: border-color 0.2s, box-shadow 0.2s;
 }
 
 .input-wrap input {
   border: none;
   outline: none;
-  height: 36px;
+  height: 38px;
   padding: 0 10px;
   font-size: 14px;
   color: var(--text-primary);
@@ -137,8 +471,8 @@ body {
   font-size: 12px;
   color: var(--text-hint);
   padding: 0 10px;
-  border-left: 0.5px solid var(--border);
-  height: 36px;
+  border-left: 1px solid var(--border);
+  height: 38px;
   display: flex;
   align-items: center;
   background: var(--surface-2);
@@ -146,8 +480,8 @@ body {
 
 .field select,
 .field input:not(.input-wrap input) {
-  height: 36px;
-  border: 0.5px solid var(--border-strong);
+  height: 38px;
+  border: 1px solid var(--border-strong);
   border-radius: var(--radius-md);
   padding: 0 10px;
   font-size: 14px;
@@ -156,17 +490,18 @@ body {
   width: 100%;
   outline: none;
   cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s;
 }
 
 .field select:focus,
 .input-wrap:focus-within {
   border-color: var(--accent);
-  box-shadow: 0 0 0 2px rgba(24,95,165,0.12);
+  box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.15);
 }
 
 .perfil-header {
   display: grid;
-  grid-template-columns: 100px 1fr 1fr 1fr 1fr 32px;
+  grid-template-columns: 100px 1fr 1fr 1fr 1fr 34px;
   gap: 8px;
   margin-bottom: 6px;
 }
@@ -174,20 +509,20 @@ body {
 .perfil-header span {
   font-size: 11px;
   color: var(--text-hint);
-  font-weight: 500;
+  font-weight: 400;
 }
 
 .perfil-row {
   display: grid;
-  grid-template-columns: 100px 1fr 1fr 1fr 1fr 32px;
+  grid-template-columns: 100px 1fr 1fr 1fr 1fr 34px;
   gap: 8px;
   align-items: center;
   margin-bottom: 8px;
 }
 
 .perfil-row input {
-  height: 34px;
-  border: 0.5px solid var(--border-strong);
+  height: 36px;
+  border: 1px solid var(--border-strong);
   border-radius: var(--radius-md);
   padding: 0 8px;
   font-size: 13px;
@@ -195,17 +530,19 @@ body {
   background: var(--surface);
   width: 100%;
   outline: none;
+  transition: border-color 0.2s;
 }
 
 .perfil-row input:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 0 2px rgba(24,95,165,0.12);
+  box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.15);
 }
 
+/* Botoões de Interação Dentro da Calculadora */
 .btn-rm {
-  width: 32px;
-  height: 34px;
-  border: 0.5px solid var(--border);
+  width: 34px;
+  height: 36px;
+  border: 1px solid var(--border);
   border-radius: var(--radius-md);
   background: var(--surface-2);
   color: var(--text-secondary);
@@ -214,42 +551,46 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  line-height: 1;
-  transition: background 0.15s, color 0.15s;
+  transition: all 0.2s;
 }
 
 .btn-rm:hover {
   background: var(--danger-bg);
   color: var(--danger-text);
-  border-color: rgba(163,45,45,0.3);
+  border-color: rgba(153, 27, 27, 0.3);
 }
 
 .btn-add {
-  height: 32px;
-  border: 0.5px solid var(--border-strong);
+  height: 34px;
+  border: 1px dashed var(--border-strong);
   border-radius: var(--radius-md);
-  background: var(--surface-2);
+  background: transparent;
   color: var(--text-secondary);
   cursor: pointer;
   font-size: 13px;
+  font-weight: 400;
   padding: 0 14px;
   margin-top: 4px;
-  transition: background 0.15s, color 0.15s;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  width: max-content;
 }
 
 .btn-add:hover {
   background: var(--accent-bg);
-  color: var(--accent-text);
-  border-color: rgba(24,95,165,0.25);
+  color: var(--accent);
+  border-color: var(--accent);
+  border-style: solid;
 }
 
 .jx-total-row {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-top: 12px;
-  padding-top: 10px;
-  border-top: 0.5px solid var(--border);
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
 }
 
 .jx-total-row span {
@@ -258,47 +599,55 @@ body {
 }
 
 .jx-total-val {
-  font-size: 14px !important;
+  font-size: 15px !important;
   font-weight: 500;
-  color: var(--text-primary) !important;
+  color: var(--accent) !important;
 }
 
+/* Botão Dominante Principal */
 .calc-action {
   display: flex;
   justify-content: flex-end;
+  margin-top: 10px;
 }
 
 .btn-calc {
-  height: 42px;
-  padding: 0 28px;
+  height: 48px;
+  padding: 0 32px;
   background: var(--accent);
   color: #ffffff;
   border: none;
   border-radius: var(--radius-md);
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 500;
   cursor: pointer;
-  transition: opacity 0.15s, transform 0.1s;
+  transition: all 0.2s;
+  box-shadow: 0 4px 12px rgba(249, 115, 22, 0.3);
 }
 
 .btn-calc:hover {
-  opacity: 0.9;
+  background: var(--accent-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(249, 115, 22, 0.4);
 }
 
 .btn-calc:active {
   transform: scale(0.98);
 }
 
+/* Bloco Final Informativo Apresentado após ser Clicado e Preenchido */
 .result-section {
-  background: var(--surface-2);
-  border: 0.5px solid var(--border);
+  background: linear-gradient(180deg, var(--surface) 0%, var(--surface-2) 100%);
+  border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   padding: 1.5rem 1.75rem;
   display: none;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.03);
 }
 
 .result-section.visible {
   display: block;
+  animation: fadeIn 0.5s ease;
 }
 
 .res-eyebrow {
@@ -316,15 +665,17 @@ body {
 }
 
 .res-val {
-  font-size: 44px;
+  font-size: 48px;
   font-weight: 500;
   color: var(--text-primary);
   line-height: 1;
+  letter-spacing: -1px;
 }
 
 .res-unit {
   font-size: 18px;
   color: var(--text-secondary);
+  font-weight: 400;
 }
 
 .badge {
@@ -332,59 +683,77 @@ body {
   font-size: 12px;
   font-weight: 500;
   padding: 4px 12px;
-  border-radius: var(--radius-md);
+  border-radius: 20px;
   margin-top: 8px;
 }
 
-.badge.ok { background: var(--success-bg); color: var(--success-text); }
-.badge.warn { background: var(--warn-bg); color: var(--warn-text); }
-.badge.err { background: var(--danger-bg); color: var(--danger-text); }
-.badge.neutral { background: var(--surface); color: var(--text-secondary); border: 0.5px solid var(--border); }
+.badge.ok {
+  background: var(--success-bg);
+  color: var(--success-text);
+}
 
+.badge.warn {
+  background: var(--warn-bg);
+  color: var(--warn-text);
+}
+
+.badge.err {
+  background: var(--danger-bg);
+  color: var(--danger-text);
+}
+
+.badge.neutral {
+  background: var(--surface);
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+}
+
+/* Detalhes da Barra de Stress Percentual do Elemento Alumínio Calculado */
 .bar-wrap {
-  margin-top: 16px;
+  margin-top: 24px;
+  margin-bottom: 24px;
 }
 
 .bar-row {
   display: flex;
   justify-content: space-between;
   font-size: 12px;
+  font-weight: 400;
   color: var(--text-secondary);
-  margin-bottom: 6px;
+  margin-bottom: 8px;
 }
 
 .bar-bg {
   background: var(--border);
-  border-radius: 4px;
-  height: 7px;
+  border-radius: 6px;
+  height: 8px;
   overflow: hidden;
 }
 
 .bar-fill {
-  height: 7px;
-  border-radius: 4px;
+  height: 8px;
+  border-radius: 6px;
   width: 0%;
-  transition: width 0.4s ease, background 0.3s;
+  transition: width 0.8s cubic-bezier(0.2, 0.8, 0.2, 1), background 0.3s;
 }
 
 .metrics {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-  margin-top: 16px;
+  gap: 12px;
 }
 
 .metric {
   background: var(--surface);
-  border: 0.5px solid var(--border);
+  border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  padding: 10px 12px;
+  padding: 12px 14px;
 }
 
 .m-lbl {
   font-size: 11px;
   color: var(--text-secondary);
-  margin-bottom: 3px;
+  margin-bottom: 4px;
 }
 
 .m-val {
@@ -394,38 +763,239 @@ body {
 }
 
 .page-footer {
-  margin-top: 2rem;
-  padding-top: 1rem;
-  border-top: 0.5px solid var(--border);
+  margin-top: 3rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border);
 }
 
 .page-footer p {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-hint);
   line-height: 1.7;
+  text-align: center;
+}
+
+/* =================================================================================
+ * SESSÃO: COMPONENTE DE ATENDIMENTO E SUPORTE
+ * ================================================================================= */
+
+.ticket-row {
+  display: grid;
+  grid-template-columns: 100px 2fr 1fr 140px 140px;
+  gap: 16px;
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--border);
+  align-items: center;
+  transition: background 0.2s;
+  cursor: pointer;
+}
+
+.ticket-row:hover {
+  background: var(--surface-2);
+}
+
+.ticket-row:last-child {
+  border-bottom: none;
+}
+
+.ticket-row .t-code {
+  font-family: monospace;
+  font-weight: 500;
+  color: var(--accent);
+}
+
+.ticket-row .t-title {
+  font-weight: 400;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ticket-row .t-user {
+  color: var(--text-secondary);
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ticket-row .t-date {
+  color: var(--text-hint);
+  font-size: 12px;
+}
+
+/* Badges específicos do Suporte */
+.badge.critic {
+  background: #FEE2E2;
+  color: #991B1B;
+}
+
+.badge.high {
+  background: #FFEDD5;
+  color: #C2410C;
+}
+
+.badge.medium {
+  background: #E0F2FE;
+  color: #0369A1;
+}
+
+.badge.low {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+}
+
+/* Modificadores p/ status ticket */
+.badge.status-open {
+  background: #E0F2FE;
+  color: #0369A1;
+  border: 1px solid rgba(3, 105, 161, 0.2);
+}
+
+.badge.status-dev {
+  background: #FEF3C7;
+  color: #B45309;
+  border: 1px solid rgba(180, 83, 9, 0.2);
+}
+
+.badge.status-wait {
+  background: #FFF7ED;
+  color: #C2410C;
+  border: 1px solid rgba(194, 65, 12, 0.2);
+}
+
+.badge.status-answered {
+  background: #DCFCE7;
+  color: #166534;
+  border: 1px solid rgba(22, 101, 52, 0.2);
+}
+
+.badge.status-closed {
+  background: var(--surface-2);
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+}
+
+.sup-internal-view {
+  display: none;
+}
+
+.sup-internal-view.active {
+  display: block;
+  animation: fadeIn 0.4s ease forwards;
+}
+
+.ticket-detail-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 24px;
+  align-items: start;
+}
+
+.t-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.t-reply {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  position: relative;
+}
+
+.t-reply.admin-reply {
+  border-left: 3px solid var(--accent);
+}
+
+.t-reply-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.t-reply-author {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.t-reply-date {
+  font-size: 12px;
+  color: var(--text-hint);
+}
+
+.t-reply-body {
+  font-size: 14px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+/* =================================================================================
+ * MEDIA QUERIES (ADAPTAÇÃO A DISPOSITIVOS MENORES, COMO SMARTPHONES)
+ * ================================================================================= */
+
+@media (max-width: 900px) {
+  .ticket-detail-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  body {
+    flex-direction: column;
+    overflow: auto;
+  }
+
+  .sidebar {
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    padding: 1rem;
+  }
+
+  .menu-group {
+    margin-bottom: 1rem;
+  }
+
+  .content-area {
+    overflow-y: visible;
+  }
+
+  .views-container {
+    padding: 1rem;
+  }
 }
 
 @media (max-width: 560px) {
   .grid2 {
     grid-template-columns: 1fr;
   }
+
   .field.full {
     grid-column: 1;
   }
+
   .perfil-header,
   .perfil-row {
     grid-template-columns: 80px 1fr 1fr 28px;
   }
+
+  /* Oculta em celulares visões que não importam na matriz física como Ix e Wx visando espaço */
   .perfil-header span:nth-child(4),
   .perfil-header span:nth-child(5),
   .perfil-row div:nth-child(4),
   .perfil-row div:nth-child(5) {
     display: none;
   }
+
   .metrics {
     grid-template-columns: 1fr 1fr;
-  }
-  .res-val {
-    font-size: 36px;
   }
 }
