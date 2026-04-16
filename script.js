@@ -67,7 +67,11 @@ function calcularHmax(larguraFolha, pressao, jxTotal) {
  * Função de roteamento visual para comportamento de Single Page App (SPA).
  * Alterna entre Dashboard, Ferramentas e Treinamentos mapeando classes CSS.
  */
+let isNavigationInitialized = false;
 function initNavigation() {
+  if (isNavigationInitialized) return;
+  isNavigationInitialized = true;
+
   const menuItems = document.querySelectorAll('.menu-item');
   const views = document.querySelectorAll('.view');
   const topTitle = document.getElementById('top-title');
@@ -653,7 +657,11 @@ function initAdminPanel() {
   loadUsersGrid();
 }
 
+let isSupportControlsInitialized = false;
 function initSupportControls() {
+  if (isSupportControlsInitialized) return;
+  isSupportControlsInitialized = true;
+
   const selFilterClient = document.getElementById('filter-client');
   if (selFilterClient) {
     // Esconde ou desativa o filtro de cliente na visualização já que conectamos na Nuvem real
