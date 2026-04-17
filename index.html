@@ -67,7 +67,7 @@
 
       <!-- Classe '.active' dita qual destas é a aba em uso -->
       <!-- O atributo 'data-target' mapeia o container ID (view-xxx) atrelado no JavaScript -->
-      <a href="#" class="menu-item active" data-target="view-home">
+      <a href="#view-home" class="menu-item active" id="nav-item-home">
         <i data-lucide="layout-dashboard"></i>
         <span>Dashboard</span>
       </a>
@@ -76,7 +76,7 @@
     <!-- Categoria: Coleção de Ferramentas -->
     <div class="menu-group" id="grp-ferramentas">
       <div class="menu-label">Ferramentas</div>
-      <a href="#" class="menu-item" id="nav-item-calc" data-target="view-calc">
+      <a href="#view-calc" class="menu-item" id="nav-item-calc">
         <i data-lucide="calculator"></i>
         <span>Calculadora H. Máx.</span>
       </a>
@@ -85,7 +85,7 @@
     <!-- Categoria: Setor Acoplado MyMetal System -->
     <div class="menu-group" id="grp-mymetal">
       <div class="menu-label">MyMetal</div>
-      <a href="#" class="menu-item" id="nav-item-trainings" data-target="view-trainings">
+      <a href="#view-trainings" class="menu-item" id="nav-item-trainings">
         <i data-lucide="book-open"></i>
         <span>Treinamentos</span>
       </a>
@@ -94,12 +94,12 @@
     <!-- Categoria: Atendimento ao Cliente -->
     <div class="menu-group" id="grp-suporte">
       <div class="menu-label">Atendimento</div>
-      <a href="#" class="menu-item" id="nav-item-support" data-target="view-support">
+      <a href="#view-support" class="menu-item" id="nav-item-support">
         <i data-lucide="hard-hat"></i>
         <span>Suporte</span>
       </a>
       <!-- APENAS ADMIN: Gestão de Usuários -->
-      <a href="#" class="menu-item" id="nav-item-admin" data-target="view-admin" style="display: none;">
+      <a href="#view-admin" class="menu-item" id="nav-item-admin" style="display: none;">
         <i data-lucide="users"></i>
         <span>Licenças</span>
       </a>
@@ -143,14 +143,14 @@
         <!-- Placas de Cartões de Atalhos rápidos em malha quadricular -->
         <div class="home-grid">
 
-          <div class="home-card" data-action="view-calc">
+          <div class="home-card" onclick="window.location.hash='view-calc'">
             <div class="hc-icon" style="background-color: var(--light-blue); color: var(--accent);"><i
                 data-lucide="calculator"></i></div>
             <h3>Calculadora NBR 10821-2017</h3>
             <p>Calcule a altura máxima e a força do vento baseadas nas normativas do setor.</p>
           </div>
 
-          <div class="home-card" data-action="view-trainings">
+          <div class="home-card" onclick="window.location.hash='view-trainings'">
             <div class="hc-icon" style="background-color: var(--accent-bg); color: var(--accent);"><i
                 data-lucide="book-open"></i></div>
             <h3>Treinamentos MyMetal</h3>

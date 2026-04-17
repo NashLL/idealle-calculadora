@@ -59,83 +59,45 @@ function calcularHmax(larguraFolha, pressao, jxTotal) {
 }
 
 /**
- * Função de roteamento visual para comportamento de Single Page App (SPA).
- * Alterna entre Dashboard, Ferramentas e Treinamentos mapeando classes CSS.
+ * Limpa todo o estado visual do app para evitar vazamento de dados entre sessões de usuários diferentes.
  */
-let isNavigationInitialized = false;
-function initNavigation() {
-  if (isNavigationInitialized) return;
-  isNavigationInitialized = true;
+function resetAppState() {
+  // Reseta views internas do suporte
+  document.querySelectorAll('.sup-internal-view').forEach(v => v.classList.remove('active'));
+  const supList = document.getElementById('sup-view-list');
+  if (supList) supList.classList.add('active');
 
-  const menuItems = document.querySelectorAll('.menu-item');
-  const views = document.querySelectorAll('.view');
-  const topTitle = document.getElementById('top-title');
+  // Limpa formulários
+  const formTicket = document.getElementById('form-ticket');
+  if (formTicket) formTicket.reset();
+  const formReply = document.getElementById('form-reply');
+  if (formReply) formReply.reset();
 
-  // Adiciona navegação aos botões de atalho internos na Home
-  const homeCards = document.querySelectorAll('[data-action]');
-  homeCards.forEach(card => {
-    card.addEventListener('click', (e) => {
-      e.preventDefault();
-      const targetId = card.getAttribute('data-action');
-      navigateTo(targetId);
-    });
-  });
+  // Limpa estados de upload pendentes
+  pendingTicketFile = null;
+  pendingReplyFile = null;
 
-  // Adiciona navegação a cada item lateral
-  menuItems.forEach(item => {
-    item.addEventListener('click', (e) => {
-      e.preventDefault();
-      const targetId = item.getAttribute('data-target');
-      if (targetId) window.location.hash = targetId;
-    });
-  });
+  // Restaura labels de upload
+  const tkLbl = document.getElementById('tk-anexo-lbl');
+  if (tkLbl) { tkLbl.textContent = 'Escolher um arquivo...'; tkLbl.style.color = 'inherit'; }
+  const rpLbl = document.getElementById('reply-anexo-lbl');
+  if (rpLbl) { rpLbl.textContent = 'Anexar Arquivo'; rpLbl.style.color = 'inherit'; }
 
-  // O Motor de Roteamento! Escuta a URL e controla o DOM.
-  function applyRoute() {
-    let targetId = window.location.hash.substring(1);
-    if (!targetId || !document.getElementById(targetId)) return; // Ignora hashes/links mortos
+  // Restaura cabeçalho e botões do suporte
+  const mainHeader = document.getElementById('support-main-header');
+  if (mainHeader) mainHeader.style.display = 'flex';
+  const btnNewTicket = document.getElementById('btn-new-ticket');
+  if (btnNewTicket) btnNewTicket.style.display = 'inline-flex';
 
-    // SEGURANÇA DE ROTEADOR: Se o cara tentar digitar na URL, eu barro aqui
-    if (currentUser && currentUser.permissions) {
-      const p = currentUser.permissions;
-      let allowed = true;
-      if (targetId === 'view-calc' && !p.calc) allowed = false;
-      if (targetId === 'view-trainings' && !p.trainings) allowed = false;
-      if (targetId === 'view-support' && !p.support) allowed = false;
-      if (targetId === 'view-admin' && !p.admin) allowed = false;
+  // Limpa lista de tickets renderizados
+  const ticketList = document.getElementById('ticket-list');
+  if (ticketList) ticketList.innerHTML = '';
 
-      if (!allowed) {
-        targetId = 'view-forbidden';
-      }
-    }
-
-    views.forEach(v => v.classList.remove('active'));
-    menuItems.forEach(m => m.classList.remove('active'));
-
-    const activeMenu = document.querySelector(`.menu-item[data-target="${targetId}"]`);
-    if (activeMenu) activeMenu.classList.add('active');
-
-    const targetView = document.getElementById(targetId);
-    if (targetView) targetView.classList.add('active');
-
-    // Modifica o título principal da janela à qual o usuário navegou
-    if (targetId === 'view-home') topTitle.textContent = 'Dashboard / Visão Geral';
-    if (targetId === 'view-calc') topTitle.textContent = 'Ferramentas / Calculadora H. Máxima';
-    if (targetId === 'view-trainings') topTitle.textContent = 'MyMetal / Treinamentos';
-    if (targetId === 'view-admin') topTitle.textContent = 'Gestão / Licenças';
-    if (targetId === 'view-support') {
-      topTitle.textContent = 'Atendimento / Suporte';
-      if (typeof renderTickets === 'function') renderTickets();
-    }
-  }
-
-  // Liga a escuta da API de Histórico do navegador (Faz as Setas de Voltar e Avançar funcionarem!)
-  window.addEventListener('hashchange', applyRoute);
-
-  // Mantém a antiga função navigateTo apontando para URL para nao quebrar cliques isolados
-  function navigateTo(targetId) {
-    window.location.hash = targetId;
-  }
+  // Reseta filtros
+  ticketFilters.text = '';
+  ticketFilters.client = 'all';
+  const searchInput = document.getElementById('ticket-search');
+  if (searchInput) searchInput.value = '';
 }
 
 /**
@@ -306,11 +268,19 @@ function timeAgo(dateString) {
  */
 async function uploadToStorage(file, folderPath) {
   if (!file) return null;
-  const fileName = `${Date.now()}_${file.name}`;
+  
+  // Limpa o nome do arquivo de caracteres especiais, espaços e acentos
+  const cleanName = file.name.normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '') // remove acentos
+    .replace(/[^\w\d.-]/g, '_');   // troca tudo que não é letra/número por _
+
+  const fileName = `${Date.now()}_${cleanName}`;
   const filePath = `${folderPath}/${fileName}`;
-  const { data, error } = await sb.storage.from('attachments').upload(filePath, file);
+  
+  const { data, error } = await sb.storage.from('Armazenamento de arquivos enviados no Suporte').upload(filePath, file);
   if (error) throw error;
-  const { data: urlData } = sb.storage.from('attachments').getPublicUrl(filePath);
+  
+  const { data: urlData } = sb.storage.from('Armazenamento de arquivos enviados no Suporte').getPublicUrl(filePath);
   return urlData.publicUrl;
 }
 
@@ -737,7 +707,11 @@ function initAdminPanel() {
 
 let isSupportControlsInitialized = false;
 function initSupportControls() {
-  if (isSupportControlsInitialized) return;
+  if (isSupportControlsInitialized) {
+    // Já inicializado, mas precisa recarregar tickets para o novo usuário
+    renderTickets();
+    return;
+  }
   isSupportControlsInitialized = true;
 
   const selFilterClient = document.getElementById('filter-client');
@@ -854,7 +828,7 @@ function initSupportControls() {
 
         // Inicia Upload Imediato
         const originalLabel = lbl.textContent;
-        lbl.textContent = 'Enviando ao Google...';
+        lbl.textContent = 'Enviando ao servidor...';
         lbl.style.color = 'var(--accent)';
         if (submitBtn) {
           submitBtn.disabled = true;
@@ -971,6 +945,68 @@ function initSupportControls() {
     }
   });
 }
+/**
+ * ROTEADOR SPA (Global)
+ */
+function renderView() {
+  const views = ['view-home', 'view-calc', 'view-trainings', 'view-support', 'view-admin'];
+  const navItems = document.querySelectorAll('.nav-item');
+  const topTitle = document.getElementById('top-title');
+  let hash = window.location.hash.replace('#', '') || 'view-home';
+
+  // Se não estiver logado, não navega
+  if (!currentUser && hash !== 'login-overlay') return;
+
+  // PROTEÇÃO DE ROTA
+  const p = currentUser?.permissions || {};
+  const isAdm = currentUser?.role === 'admin';
+  const guards = {
+    'view-calc': p.calc || isAdm,
+    'view-trainings': p.trainings || isAdm,
+    'view-support': p.support || isAdm,
+    'view-admin': p.admin || isAdm
+  };
+
+  if (guards[hash] === false) {
+    window.location.hash = 'view-home';
+    return;
+  }
+
+  // Esconde todas as views e mostra a atual
+  views.forEach(v => {
+    const el = document.getElementById(v);
+    if (el) el.style.display = (v === hash) ? 'block' : 'none';
+  });
+
+  // Atualiza menu lateral
+  navItems.forEach(item => {
+    item.classList.toggle('active', item.getAttribute('href') === '#' + hash);
+  });
+
+  // Atualiza breadcrumb
+  if (topTitle) {
+    const titles = {
+      'view-home': 'Dashboard / Visão Geral',
+      'view-calc': 'Ferramentas / Calculadora H. Máxima',
+      'view-trainings': 'MyMetal / Treinamentos',
+      'view-support': 'Atendimento / Suporte',
+      'view-admin': 'Gestão / Licenças'
+    };
+    topTitle.textContent = titles[hash] || 'Dashboard';
+  }
+
+  // Carrega tickets quando entra no suporte
+  if (hash === 'view-support' && typeof renderTickets === 'function') {
+    renderTickets();
+  }
+
+  const mainContent = document.querySelector('.main-content');
+  if (mainContent) mainContent.scrollTop = 0;
+  if (window.lucide) lucide.createIcons();
+}
+
+// Inicializa o roteador global uma única vez
+window.addEventListener('hashchange', renderView);
 
 function initSupabaseAuthUI() {
   const overlay = document.getElementById('login-overlay');
@@ -978,185 +1014,173 @@ function initSupabaseAuthUI() {
   const loginForm = document.getElementById('login-form');
   const loginError = document.getElementById('login-error');
 
-  // Helper para resetar botões de login
-  function resetLoginButton() {
-    const btnLog = loginForm?.querySelector('button[type="submit"]');
-    if (btnLog) {
-      btnLog.disabled = false;
-      btnLog.textContent = 'Entrar na Plataforma';
-    }
-  }
+  const PROFILE_CACHE_KEY = 'cached_user_profile';
 
-  let isProcessingAuth = false;
-
-  // Função centralizada que processa o usuário autenticado
-  async function handleAuthUser(user) {
-    if (isProcessingAuth) return;
-    isProcessingAuth = true;
-
-    if (user) {
-      console.log('--- Processando Usuário:', user.email, '---');
-      try {
-        // TIMEOUT DE SEGURANÇA: Se o banco não responder em 4s, aborta
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 4000);
-
-        console.log('Buscando perfil na tabela "profiles"...');
-        const { data: profiles, error } = await sb.from('profiles')
-          .select('*')
-          .eq('id', user.id)
-          .limit(1)
-          .abortSignal(controller.signal);
-        
-        clearTimeout(timeoutId);
-        const profile = profiles && profiles.length > 0 ? profiles[0] : null;
-
-        if (error) {
-          console.warn('Nota sobre perfil:', error.message);
-          if (error.message.includes('relation "profiles" does not exist')) {
-            alert('⚠️ TABELA FALTANDO: Rode o SQL no Dashboard do Supabase.');
-            await sb.auth.signOut();
-            return;
-          }
-        }
-
-        if (profile) {
-          console.log('✅ Perfil carregado:', profile.name);
-          currentUser = { id: user.id, email: user.email, ...profile };
-        } else {
-          console.log('⚠️ Perfil não encontrado, tentando auto-promoção admin...');
-          if (user.email.includes('admin') || user.email.includes('ericnash2011')) {
-            currentUser = {
-              id: user.id, email: user.email,
-              name: user.user_metadata?.full_name || 'Admin Oficial',
-              role: 'admin', company: 'Idealle',
-              permissions: { calc: true, trainings: true, support: true, admin: true }
-            };
-            await sb.from('profiles').upsert({
-              id: currentUser.id, name: currentUser.name, email: currentUser.email,
-              role: currentUser.role, company: currentUser.company, permissions: currentUser.permissions,
-              created_at: new Date().toISOString()
-            });
-          } else {
-            await sb.auth.signOut();
-            alert('ACESSO NEGADO: Sua licença não foi encontrada.');
-            return;
-          }
-        }
-
-        // Toggles da interface
-        const p = currentUser.permissions;
-        if (document.getElementById('nav-item-calc')) document.getElementById('nav-item-calc').style.display = p.calc ? 'flex' : 'none';
-        if (document.getElementById('nav-item-trainings')) document.getElementById('nav-item-trainings').style.display = p.trainings ? 'flex' : 'none';
-        if (document.getElementById('nav-item-support')) document.getElementById('nav-item-support').style.display = p.support ? 'flex' : 'none';
-        const navItemAdmin = document.getElementById('nav-item-admin');
-        if (navItemAdmin) navItemAdmin.style.display = p.admin ? 'flex' : 'none';
-
-        if (p.admin) initAdminPanel();
-
-        overlay.style.display = 'none';
-        mainApp.style.display = 'flex';
-        if (window.lucide) lucide.createIcons();
-        if (!window.location.hash || window.location.hash === '#login-overlay') window.location.hash = 'view-home';
-        window.dispatchEvent(new Event('hashchange'));
-
-        initNavigation();
-        renderPerfis();
-        initSupportControls();
-      } catch (e) {
-        console.error('Erro no processamento de Auth:', e);
-        if (e.name === 'AbortError') {
-          alert('⏳ O banco de dados demorou demais para responder. Tente novamente ou verifique sua conexão.');
-        }
-        resetLoginButton();
-      } finally {
-        isProcessingAuth = false;
-      }
+  function showLoginForm(errorMsg = null) {
+    loginForm.style.display = 'flex';
+    if (errorMsg) {
+      loginError.textContent = errorMsg;
+      loginError.style.color = 'var(--danger-text)';
+      loginError.style.display = 'block';
     } else {
-      currentUser = null;
-      overlay.style.display = 'flex';
-      mainApp.style.display = 'none';
-      resetLoginButton();
-      isProcessingAuth = false;
+      loginError.style.display = 'none';
     }
+    const btn = loginForm.querySelector('button[type="submit"]');
+    if (btn) { btn.disabled = false; btn.textContent = 'Entrar na Plataforma'; }
   }
 
-  // Monitor de Autenticação Unificado (Supabase v2)
-  sb.auth.onAuthStateChange(async (event, session) => {
+  // Monta a interface com os dados do perfil
+  function setupApp(profile) {
+    currentUser = profile;
+    const p = currentUser.permissions || {};
+    const isAdm = currentUser.role === 'admin';
+
+    const toggles = {
+      'nav-item-calc': p.calc || isAdm,
+      'nav-item-trainings': p.trainings || isAdm,
+      'nav-item-support': p.support || isAdm,
+      'nav-item-admin': p.admin || isAdm
+    };
+    Object.entries(toggles).forEach(([id, show]) => {
+      const el = document.getElementById(id);
+      if (el) el.style.display = show ? 'flex' : 'none';
+    });
+
+    const grpToggles = {
+      'grp-ferramentas': p.calc || isAdm,
+      'grp-mymetal': p.trainings || isAdm,
+      'grp-suporte': p.support || isAdm
+    };
+    Object.entries(grpToggles).forEach(([id, show]) => {
+      const el = document.getElementById(id);
+      if (el) el.style.display = show ? 'block' : 'none';
+    });
+
+    if (isAdm) initAdminPanel();
+
+    overlay.style.display = 'none';
+    mainApp.style.display = 'flex';
+
+    const validHashes = ['view-home', 'view-calc', 'view-trainings', 'view-support', 'view-admin'];
+    const currentHash = window.location.hash.replace('#', '');
+    if (!validHashes.includes(currentHash)) {
+      window.location.hash = 'view-home';
+    }
+    renderView();
+    renderPerfis();
+    initSupportControls();
+  }
+
+  // ── Monitor de Autenticação ──────────────────────────────────────
+  sb.auth.onAuthStateChange((event, session) => {
     console.log('Evento Auth:', event);
-    
-    if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED') {
-      if (session?.user) await handleAuthUser(session.user);
-    } 
-    
+
+    if (event === 'INITIAL_SESSION') {
+      if (session?.user) {
+        // F5: Tenta ler perfil do cache local (INSTANTÂNEO, sem banco)
+        const cached = localStorage.getItem(PROFILE_CACHE_KEY);
+        if (cached) {
+          try {
+            const profile = JSON.parse(cached);
+            if (profile.id === session.user.id) {
+              console.log('✅ Sessão restaurada do cache local');
+              setupApp(profile);
+              return;
+            }
+          } catch (e) { /* cache corrompido */ }
+        }
+        // Sem cache: pede login novamente
+        localStorage.removeItem(PROFILE_CACHE_KEY);
+        showLoginForm('Sessão expirada. Faça login novamente.');
+      } else {
+        showLoginForm();
+      }
+      return;
+    }
+
     if (event === 'SIGNED_OUT') {
-      await handleAuthUser(null);
+      currentUser = null;
+      resetAppState();
+      localStorage.removeItem(PROFILE_CACHE_KEY);
+      window.location.hash = '';
+      mainApp.style.display = 'none';
+      overlay.style.display = 'flex';
+      showLoginForm();
     }
   });
 
-  // Listener Formulário Login
+  // ── Formulário de Login (ÚNICO momento que fala com o banco) ─────
   loginForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const email = document.getElementById('login-email').value;
     const senha = document.getElementById('login-senha').value;
     const btnSubmit = e.target.querySelector('button[type="submit"]');
 
-    console.log('--- Iniciando Login Supabase ---');
     loginError.style.display = 'none';
-    const btnOriginalText = btnSubmit.textContent;
-    btnSubmit.textContent = 'Autenticando na Nuvem...';
+    btnSubmit.textContent = 'Autenticando...';
     btnSubmit.disabled = true;
 
     try {
-      console.log('Tentando signInWithPassword para:', email);
-      const { data, error } = await sb.auth.signInWithPassword({ email, password: senha });
-
-      if (error) {
-        console.error('Erro retornado pelo Supabase Auth:', error);
-        let msg = 'Erro ao entrar. Verifique suas credenciais.';
-        
-        if (error.message.includes('Email not confirmed')) {
-          msg = '⚠️ CONFIRMAÇÃO PENDENTE: Você precisa clicar no link enviado por e-mail ou desativar "Confirm email" no Dashboard do Supabase (Authentication -> Providers).';
-        } else if (error.status === 400) {
-          msg = 'E-mail ou senha inválidos no Supabase. Verifique se criou o usuário na aba AUTH.';
-        } else {
-          msg = 'Erro: ' + error.message;
-        }
-
-        loginError.textContent = msg;
-        loginError.style.display = 'block';
-      } else {
-        console.log('Login Auth bem-sucedido, processando usuário:', data.user.id);
+      // 1. Autentica
+      const { data: authData, error: authError } = await sb.auth.signInWithPassword({ email, password: senha });
+      if (authError) {
+        let msg = 'E-mail ou senha inválidos.';
+        if (authError.message.includes('Email not confirmed')) msg = '⚠️ E-mail não confirmado. Desative "Confirm email" no Dashboard.';
+        showLoginForm(msg);
+        return;
       }
-    } catch (err) {
-      console.error('Falha CATASTRÓFICA no login:', err);
-      alert('Erro inesperado de rede ou script. Verifique o console (F12).');
-    } finally {
-      // GARANTIA: Se não logou (o onAuthStateChange não escondeu o overlay), destrava o botão
-      setTimeout(() => {
-        if (overlay.style.display !== 'none') {
-          console.log('Resetando botão de login por segurança.');
-          btnSubmit.textContent = btnOriginalText;
-          btnSubmit.disabled = false;
+
+      const user = authData.user;
+      btnSubmit.textContent = 'Carregando perfil...';
+
+      // 2. Busca perfil no banco
+      let profile = null;
+      try {
+        const { data, error } = await sb.from('profiles').select('*').eq('id', user.id).limit(1);
+        if (error) throw error;
+        if (data?.length > 0) profile = data[0];
+      } catch (dbErr) {
+        console.error('Erro DB:', dbErr.message);
+        const isMaster = email.includes('admin') || email.includes('ericnash2011') || email.includes('rodrigo@idealle.com');
+        if (isMaster) {
+          profile = { name: 'Administrador', role: 'admin', permissions: { calc: true, trainings: true, support: true, admin: true } };
         }
-      }, 1000);
+      }
+
+      if (!profile) {
+        await sb.auth.signOut();
+        showLoginForm('Acesso negado: licença não encontrada.');
+        return;
+      }
+
+      // 3. Salva no cache e abre o app
+      const fullProfile = { id: user.id, email: user.email, ...profile };
+      localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(fullProfile));
+      window.location.hash = 'view-home';
+      setupApp(fullProfile);
+
+    } catch (err) {
+      showLoginForm('Erro de rede. Verifique sua conexão.');
     }
   });
 
-  // Listener Logout
+  // ── Logout ────────────────────────────────────────────────────────
   document.getElementById('btn-logout').addEventListener('click', async (e) => {
     e.preventDefault();
+    overlay.style.display = 'flex';
+    mainApp.style.display = 'none';
     try {
-      overlay.style.display = 'flex';
-      mainApp.style.display = 'none';
       await sb.auth.signOut();
     } catch (err) {
-      console.error('Erro ao sair:', err);
-      // Fallback em caso de erro no Supabase: forçar recarga
-      window.location.reload();
+      currentUser = null;
+      resetAppState();
+      localStorage.removeItem(PROFILE_CACHE_KEY);
+      window.location.hash = '';
+      showLoginForm();
     }
   });
 }
+
 
 /**
  * Função global de arranque
