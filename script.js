@@ -991,10 +991,20 @@ function initSupabaseAuthUI() {
   async function handleAuthUser(user) {
     if (user) {
       try {
-        // LOGADO: Buscar credencial oficial no Banco de Dados
+        console.log('Buscando perfil na tabela "profiles" para ID:', user.id);
         const { data: profile, error } = await sb.from('profiles').select('*').eq('id', user.id).single();
 
+        if (error) {
+          console.warn('Nota sobre perfil:', error.message);
+          if (error.message.includes('relation "profiles" does not exist')) {
+            alert('⚠️ ERRO CRÍTICO: A tabela "profiles" não foi encontrada no seu Supabase. Você precisa rodar o script SQL fornecido no Editor SQL do Dashboard.');
+            await sb.auth.signOut();
+            return;
+          }
+        }
+
         if (profile && !error) {
+          console.log('Perfil encontrado:', profile.name);
           currentUser = { id: user.id, email: user.email, ...profile };
           
           if (!currentUser.permissions) {
@@ -1086,31 +1096,45 @@ function initSupabaseAuthUI() {
     const senha = document.getElementById('login-senha').value;
     const btnSubmit = e.target.querySelector('button[type="submit"]');
 
+    console.log('--- Iniciando Login Supabase ---');
     loginError.style.display = 'none';
     const btnOriginalText = btnSubmit.textContent;
     btnSubmit.textContent = 'Autenticando na Nuvem...';
     btnSubmit.disabled = true;
 
     try {
-      const { error } = await sb.auth.signInWithPassword({ email, password: senha });
+      console.log('Tentando signInWithPassword para:', email);
+      const { data, error } = await sb.auth.signInWithPassword({ email, password: senha });
 
       if (error) {
-        btnSubmit.textContent = btnOriginalText;
-        btnSubmit.disabled = false;
-
+        console.error('Erro retornado pelo Supabase Auth:', error);
         let msg = 'Erro ao entrar. Verifique suas credenciais.';
+        
         if (error.message.includes('Email not confirmed')) {
-          msg = '⚠️ E-mail não confirmado! Verifique sua caixa de entrada ou desative a confirmação no painel Supabase.';
+          msg = '⚠️ CONFIRMAÇÃO PENDENTE: Você precisa clicar no link enviado por e-mail ou desativar "Confirm email" no Dashboard do Supabase (Authentication -> Providers).';
         } else if (error.status === 400) {
-          msg = 'E-mail ou senha inválidos. (Supabase Error 400)';
+          msg = 'E-mail ou senha inválidos no Supabase. Verifique se criou o usuário na aba AUTH.';
+        } else {
+          msg = 'Erro: ' + error.message;
         }
 
         loginError.textContent = msg;
         loginError.style.display = 'block';
+      } else {
+        console.log('Login Auth bem-sucedido, processando usuário:', data.user.id);
       }
     } catch (err) {
-      console.error('Falha crítica no login:', err);
-      resetLoginButton();
+      console.error('Falha CATASTRÓFICA no login:', err);
+      alert('Erro inesperado de rede ou script. Verifique o console (F12).');
+    } finally {
+      // GARANTIA: Se não logou (o onAuthStateChange não escondeu o overlay), destrava o botão
+      setTimeout(() => {
+        if (overlay.style.display !== 'none') {
+          console.log('Resetando botão de login por segurança.');
+          btnSubmit.textContent = btnOriginalText;
+          btnSubmit.disabled = false;
+        }
+      }, 1000);
     }
   });
 
