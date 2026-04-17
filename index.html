@@ -32,20 +32,23 @@
       
       <form id="login-form" style="display: flex; flex-direction: column; gap: 16px;">
         <div class="field" style="text-align: left;">
-          <label style="font-size: 13px; margin-bottom: 8px;">E-mail Corporativo</label>
+          <label style="font-size: 13px; margin-bottom: 8px;">Usuário de Acesso (Login)</label>
           <div class="input-wrap">
-            <input type="email" id="login-email" required placeholder="nome@empresa.com.br" />
+            <input type="text" id="login-email" required placeholder="Ex: joao_01" />
           </div>
         </div>
         <div class="field" style="text-align: left;">
           <label style="font-size: 13px; margin-bottom: 8px;">Senha de Acesso</label>
           <div class="input-wrap">
-            <input type="password" id="login-senha" required placeholder="••••••••" />
+            <input type="password" id="login-senha" required placeholder="••••••" />
+            <button type="button" id="toggle-password" class="pwd-toggle" title="Mostrar/Ocultar Senha">
+              <i data-lucide="eye"></i>
+            </button>
           </div>
         </div>
         <button type="submit" class="btn-calc" style="height: 44px; margin-top: 10px;">Entrar na Plataforma</button>
       </form>
-      <div id="login-error" style="color: var(--danger-text); font-size: 13px; margin-top: 16px; display: none;">Credenciais inválidas. Tente novamente.</div>
+      <div id="login-error" style="color: var(--danger-text); font-size: 13px; margin-top: 16px; display: none;">Login ou senha inválidos.</div>
     </div>
   </div>
 
@@ -58,7 +61,8 @@
   <nav class="sidebar">
     <!-- Logotipo / Identificação Gráfica da Plataforma -->
     <div class="sidebar-brand">
-      <img src="Logo.svg" alt="Logo MyMetal" class="brand-logo" />
+      <img src="logo.png" alt="Logo MyMetal" class="brand-logo" />
+      <i data-lucide="home" class="brand-icon" style="display: none;"></i>
     </div>
 
     <!-- Categoria: Menu Principal Básico -->
@@ -109,7 +113,7 @@
     <div class="menu-group">
       <a href="#" id="btn-logout" class="menu-item" style="color: var(--danger-text); margin-top: 8px;">
         <i data-lucide="log-out"></i>
-        Encerrar Sessão
+        <span>Encerrar Sessão</span>
       </a>
     </div>
 
@@ -123,8 +127,13 @@
 
     <!-- HEADER: Título fixo estético informando posição atual -->
     <header class="top-header">
-      <div class="nav-breadcrumbs" id="top-title">Dashboard / Visão Geral</div>
-    </header>
+    <button id="toggle-sidebar" class="btn-menu" title="Menu (Abrir/Fechar)">
+      <i data-lucide="menu"></i>
+    </button>
+    <div class="nav-breadcrumbs">
+      <span id="top-title">Dashboard / Visão Geral</span>
+    </div>
+  </header>
 
     <!-- CONTAINER SECUNDÁRIO PARA ACOMODAR AS ABAS DO USUÁRIO -->
     <div class="views-container">
@@ -135,9 +144,8 @@
       <section id="view-home" class="view active">
         <!-- Banner Físico Primário -->
         <div class="welcome-banner">
-          <h1>Bem-vindo à sua nova plataforma!</h1>
-          <p>Acesse rapidamente suas ferramentas de esquadrias ou estude com os treinamentos MyMetal usando o menu
-            lateral.</p>
+          <h1>Bem-vindo, <span id="user-welcome-name"></span>!</h1>
+          <p>Acesse rapidamente suas ferramentas de esquadrias ou estude com os treinamentos MyMetal usando o menu lateral.</p>
         </div>
 
         <!-- Placas de Cartões de Atalhos rápidos em malha quadricular -->
@@ -155,6 +163,13 @@
                 data-lucide="book-open"></i></div>
             <h3>Treinamentos MyMetal</h3>
             <p>Em breve: Acesso exclusivo aos cursos e tutoriais para elaboração de orçamentos precisos.</p>
+          </div>
+
+          <div class="home-card" onclick="window.location.hash='view-support'">
+            <div class="hc-icon" style="background-color: var(--light-blue); color: var(--light-blue-dark);"><i
+                data-lucide="hard-hat"></i></div>
+            <h3>Central de Suporte</h3>
+            <p>Precisa de ajuda? Abra um novo chamado ou acompanhe suas solicitações em aberto.</p>
           </div>
 
         </div>
@@ -666,91 +681,182 @@
       <section id="view-admin" class="view">
         
         <div class="page-header" style="margin-bottom: 24px;">
-          <h1 class="page-title">Licenças da Plataforma</h1>
-          <p class="page-sub">Gerencie quem tem o poder de acessar o MyMetal System e o Helpdesk.</p>
+          <h1 class="page-title">Gestão Administrativa</h1>
+          <p class="page-sub">Controle de licenças de usuários e cadastro de empresas parceiras.</p>
         </div>
 
-        <div class="row" style="display: flex; gap: 24px; align-items: flex-start;">
-          
-          <!-- Formulário Criar Usuário -->
-          <div class="card" style="flex: 1; max-width: 350px;">
-            <h2 style="font-size: 16px; margin-bottom: 20px; font-weight: 500;">Fornecer Nova Licença</h2>
-            <form id="admin-create-user-form" style="display: flex; flex-direction: column; gap: 12px;">
-              <div class="field">
-                <label>Nome da Pessoa</label>
-                <div class="input-wrap">
-                  <input type="text" id="admin-u-nome" required placeholder="João da Silva" />
-                </div>
-              </div>
-              <div class="field">
-                <label>Empresa Pertencente</label>
-                <div class="input-wrap">
-                  <input type="text" id="admin-u-empresa" required placeholder="Vidraçaria Beta" />
-                </div>
-              </div>
-              <div class="field">
-                <label>E-mail de Acesso (Login)</label>
-                <div class="input-wrap">
-                  <input type="email" id="admin-u-email" required placeholder="joao@vidrabeta.com.br" />
-                </div>
-              </div>
-              <div class="field">
-                <label>Senha Inicial Definitiva</label>
-                <div class="input-wrap">
-                  <input type="password" id="admin-u-senha" required placeholder="Mínimo 6 dígitos" minlength="6" />
-                </div>
-              </div>
-              <div class="field">
-                <label>Módulos Dinâmicos Liberados (Permissões)</label>
-                <div class="input-wrap" style="flex-direction: column; gap: 8px; font-size: 13px;">
-                  <label style="display: flex; gap: 8px; align-items: center; cursor: pointer;">
-                    <input type="checkbox" id="perm-calc" checked style="width:16px; height: 16px; cursor: pointer;" />
-                    Ferramentas (Calculadora HM)
-                  </label>
-                  <label style="display: flex; gap: 8px; align-items: center; cursor: pointer;">
-                    <input type="checkbox" id="perm-trainings" checked style="width:16px; height: 16px; cursor: pointer;" />
-                    Sistema MyMetal (Treinamentos)
-                  </label>
-                  <label style="display: flex; gap: 8px; align-items: center; cursor: pointer;">
-                    <input type="checkbox" id="perm-support" checked style="width:16px; height: 16px; cursor: pointer;" />
-                    Atendimento (Abertura de Chamados)
-                  </label>
-                  <label style="display: flex; gap: 8px; align-items: center; cursor: pointer; border-top: 1px solid var(--border-light); padding-top: 8px; margin-top: 4px;">
-                    <input type="checkbox" id="perm-admin" style="width:16px; height: 16px; cursor: pointer;" />
-                    <span style="color: var(--accent); font-weight: bold;">Gestor de Licenças (Sub-Admin)</span>
-                  </label>
-                </div>
-              </div>
-              
-              <button type="submit" class="btn-calc" style="height: 44px; margin-top: 10px;">
-                <span id="btn-create-u-txt">Gerar Licença e Salvar</span>
-              </button>
-              
-              <div id="admin-error" style="color: var(--danger-text); font-size: 13px; margin-top: 5px; display: none;"></div>
-              <div id="admin-success" style="color: var(--success); font-size: 13px; margin-top: 5px; display: none;">O funcionário já pode tentar logar.</div>
-            </form>
-          </div>
-
-          <!-- Tabela de Licenças Ativas -->
-          <div class="card" style="flex: 2; overflow-x: auto;">
-            <h2 style="font-size: 16px; margin-bottom: 20px; font-weight: 500;">Licenças Ativas</h2>
-            <table class="tk-table" style="width: 100%; border-collapse: collapse; text-align: left; font-size: 14px;">
-              <thead>
-                <tr style="border-bottom: 2px solid var(--border-light);">
-                  <th style="padding: 12px; color: var(--text-secondary);">Usuário</th>
-                  <th style="padding: 12px; color: var(--text-secondary);">E-mail Cadastrado</th>
-                  <th style="padding: 12px; color: var(--text-secondary);">Corporação / Empresa</th>
-                  <th style="padding: 12px; color: var(--text-secondary);">Cargo</th>
-                </tr>
-              </thead>
-              <tbody id="admin-users-list">
-                <!-- Gerado via JS Supabase -->
-              </tbody>
-            </table>
-          </div>
-          
+        <!-- Sub-navegação interna do Admin -->
+        <div class="admin-tab-nav" style="display: flex; gap: 8px; margin-bottom: 24px; border-bottom: 1px solid var(--border-light); padding-bottom: 12px;">
+          <button class="nav-tab-btn active" data-tab="tab-licencas" onclick="switchAdminTab('tab-licencas')" style="background: none; border: none; padding: 8px 16px; font-size: 14px; font-weight: 500; cursor: pointer; color: var(--text-hint); border-radius: 6px; transition: all 0.2s;">Licenças</button>
+          <button class="nav-tab-btn" data-tab="tab-empresas" onclick="switchAdminTab('tab-empresas')" style="background: none; border: none; padding: 8px 16px; font-size: 14px; font-weight: 500; cursor: pointer; color: var(--text-hint); border-radius: 6px; transition: all 0.2s;">Empresas</button>
         </div>
+
+        <!-- CONTEÚDO 1: LICENÇAS (USUÁRIOS) -->
+        <div id="tab-licencas" class="admin-tab-content active">
+          <div class="row" style="display: flex; gap: 24px; align-items: flex-start;">
+            
+            <!-- Formulário Criar Usuário -->
+            <div class="card" style="flex: 1; max-width: 350px;">
+              <h2 style="font-size: 16px; margin-bottom: 20px; font-weight: 500;">Fornecer Nova Licença</h2>
+              <form id="admin-create-user-form" style="display: flex; flex-direction: column; gap: 12px;">
+                <div class="field">
+                  <label>Nome da Pessoa</label>
+                  <div class="input-wrap">
+                    <input type="text" id="admin-u-nome" required placeholder="João da Silva" />
+                  </div>
+                </div>
+                <div class="field">
+                  <label>Empresa Pertencente</label>
+                  <div class="input-wrap">
+                    <select id="admin-u-company-id" required style="width: 100%; height: 40px; border-radius: 8px; padding: 0 12px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-primary);">
+                      <option value="">Carregando empresas...</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="field">
+                  <label>Nome de Usuário (Login)</label>
+                  <div class="input-wrap">
+                    <input type="text" id="admin-u-email" required placeholder="Ex: joao_01" style="text-transform: lowercase;" />
+                  </div>
+                </div>
+                <div class="field">
+                  <label style="display: flex; justify-content: space-between;">Senha de Acesso <a href="#" id="btn-gen-pwd" style="font-size: 11px; color: var(--accent); text-decoration: none;">Gerar Aleatória</a></label>
+                  <div class="input-wrap">
+                    <input type="text" id="admin-u-senha" required placeholder="6 dígitos" />
+                  </div>
+                </div>
+                <div class="field">
+                  <label>Módulos Dinâmicos Liberados (Permissões)</label>
+                  <div style="display: flex; flex-direction: column; gap: 12px; padding: 12px; background: var(--surface-2); border-radius: 8px; border: 1px solid var(--border); margin-top: 8px;">
+                    <label style="display: flex; gap: 10px; align-items: center; cursor: pointer; color: var(--text-primary); font-size: 14px;">
+                      <input type="checkbox" id="perm-calc" checked />
+                      <span>Ferramentas (Calculadora HM)</span>
+                    </label>
+                    <label style="display: flex; gap: 10px; align-items: center; cursor: pointer; color: var(--text-primary); font-size: 14px;">
+                      <input type="checkbox" id="perm-trainings" checked />
+                      <span>Sistema MyMetal (Treinamentos)</span>
+                    </label>
+                    <label style="display: flex; gap: 10px; align-items: center; cursor: pointer; color: var(--text-primary); font-size: 14px;">
+                      <input type="checkbox" id="perm-support" checked />
+                      <span>Atendimento (Abertura de Chamados)</span>
+                    </label>
+                    <label style="display: flex; gap: 10px; align-items: center; cursor: pointer; border-top: 1px solid var(--border); padding-top: 10px; margin-top: 2px; color: var(--text-primary); font-size: 14px;">
+                      <input type="checkbox" id="perm-admin" />
+                      <span style="color: var(--accent); font-weight: 500;">Gestor de Licenças (Sub-Admin)</span>
+                    </label>
+                  </div>
+                </div>
+                
+                <button type="submit" class="btn-calc" style="height: 44px; margin-top: 10px;">
+                  <span id="btn-create-u-txt">Gerar Licença e Salvar</span>
+                </button>
+                
+                <div id="admin-error" style="color: var(--danger-text); font-size: 13px; margin-top: 5px; display: none;"></div>
+                <div id="admin-success" style="color: var(--success); font-size: 13px; margin-top: 5px; display: none;">O funcionário já pode tentar logar.</div>
+              </form>
+            </div>
+
+            <!-- Tabela de Licenças Ativas -->
+            <div class="card" style="flex: 2; overflow-x: auto;">
+              <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 20px;">
+                <h2 style="font-size: 16px; font-weight: 500;">Licenças Ativas</h2>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <label style="font-size: 12px; color: var(--text-hint);">Filtrar por Empresa:</label>
+                  <select id="admin-filter-company" style="font-size: 12px; padding: 4px 8px; border-radius: 4px; border: 1px solid var(--border); background: var(--surface);">
+                    <option value="all">Todas</option>
+                  </select>
+                </div>
+              </div>
+              <table class="tk-table" style="width: 100%; border-collapse: collapse; text-align: left; font-size: 14px;">
+                <thead>
+                  <tr style="border-bottom: 2px solid var(--border-light);">
+                    <th style="padding: 12px; color: var(--text-secondary);">Usuário</th>
+                    <th style="padding: 12px; color: var(--text-secondary);">Login</th>
+                    <th style="padding: 12px; color: var(--text-secondary);">Senha</th>
+                    <th style="padding: 12px; color: var(--text-secondary);">Empresa</th>
+                    <th style="padding: 12px; color: var(--text-secondary);">Permissões</th>
+                    <th style="padding: 12px; color: var(--text-secondary); width: 80px;">Ações</th>
+                  </tr>
+                </thead>
+                <tbody id="admin-users-list">
+                  <!-- Gerado via JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- CONTEÚDO 2: EMPRESAS -->
+        <div id="tab-empresas" class="admin-tab-content" style="display: none;">
+          <div class="row" style="display: flex; gap: 24px; align-items: flex-start;">
+            
+            <!-- Formulário Criar Empresa -->
+            <div class="card" style="flex: 1; max-width: 350px;">
+              <h2 style="font-size: 16px; margin-bottom: 20px; font-weight: 500;">Cadastrar Nova Empresa</h2>
+              <form id="admin-create-company-form" style="display: flex; flex-direction: column; gap: 12px;">
+                <div class="field">
+                  <label>Razão Social / Nome Fantasia</label>
+                  <div class="input-wrap">
+                    <input type="text" id="comp-nome" required placeholder="Ex: Vidraçaria Alpha" />
+                  </div>
+                </div>
+                <div class="field">
+                  <label>CNPJ</label>
+                  <div class="input-wrap">
+                    <input type="text" id="comp-cnpj" placeholder="00.000.000/0000-00" />
+                  </div>
+                </div>
+                <div class="field">
+                  <label>Endereço Completo</label>
+                  <div class="input-wrap">
+                    <input type="text" id="comp-address" placeholder="Rua, Número, Cidade - UF" />
+                  </div>
+                </div>
+                <button type="submit" class="btn-calc" style="height: 44px; margin-top: 10px;">Salvar Empresa</button>
+              </form>
+            </div>
+
+            <!-- Tabela de Empresas -->
+            <div class="card" style="flex: 2; overflow-x: auto;">
+              <h2 style="font-size: 16px; margin-bottom: 20px; font-weight: 500;">Empresas Parceiras</h2>
+              <table class="tk-table" style="width: 100%; border-collapse: collapse; text-align: left; font-size: 14px;">
+                <thead>
+                  <tr style="border-bottom: 2px solid var(--border-light);">
+                    <th style="padding: 12px; color: var(--text-secondary);">Nome</th>
+                    <th style="padding: 12px; color: var(--text-secondary);">CNPJ</th>
+                    <th style="padding: 12px; color: var(--text-secondary);">Endereço</th>
+                    <th style="padding: 12px; color: var(--text-secondary); width: 80px;">Ações</th>
+                  </tr>
+                </thead>
+                <tbody id="admin-companies-list">
+                  <!-- Gerado via JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
       </section>
+
+      <!-- MODAL UNIVERSAL PARA EDIÇÃO (ADMIN) -->
+      <div id="admin-edit-modal" style="position: fixed; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); display: none; align-items: center; justify-content: center; z-index: 10000;">
+        <div class="card" style="width: 100%; max-width: 450px; padding: 32px; box-shadow: 0 20px 50px rgba(0,0,0,0.3);">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+            <h2 id="edit-modal-title" style="font-size: 18px; font-weight: 500;">Editar Dados</h2>
+            <button onclick="closeEditModal()" style="background: none; border: none; cursor: pointer; color: var(--text-hint);"><i data-lucide="x"></i></button>
+          </div>
+          
+          <form id="admin-edit-form" style="display: flex; flex-direction: column; gap: 16px;">
+             <!-- Campos inseridos dinamicamente via JS -->
+             <div id="edit-form-body"></div>
+             
+             <div style="display: flex; gap: 12px; margin-top: 16px;">
+               <button type="button" class="btn-secondary" onclick="closeEditModal()" style="flex: 1;">Cancelar</button>
+               <button type="submit" class="btn-calc" style="flex: 1;">Salvar Alterações</button>
+             </div>
+          </form>
+        </div>
+      </div>
 
     </div>
   </main>
@@ -765,7 +871,10 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 
   <!-- Carregamento do sistema construtivo principal logico -->
-  <script src="script.js"></script>
+  <!-- Overlay Escuro para o Menu Mobile -->
+  <div id="sidebar-overlay" onclick="toggleSidebar()" style="position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 9; display: none;"></div>
+  
+  <script src="script.js?v=2"></script>
 
   <!-- Disparo ordenado para que o conversor transformador das Tags "<i class="icon">" da bliblioteca 'Lucide' se transformem imediatamente em imagens SVGs injetadas no site de forma vetorizada nativa -->
   <script>

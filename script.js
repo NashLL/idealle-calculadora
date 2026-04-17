@@ -9,6 +9,26 @@ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 // Inicializa o Supabase (cliente principal)
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+// Domínio técnico para permitir login por "Usuário" sem e-mail visível
+const AUTH_DOMAIN = '@mymetal.internal';
+const PROFILE_CACHE_KEY = 'sb-profile-cache';
+
+/**
+ * Função Global para controlar o Menu Lateral (Desktop e Mobile)
+ */
+window.toggleSidebar = function() {
+  const sidebar = document.querySelector('.sidebar');
+  const overlay = document.getElementById('sidebar-overlay');
+  const isMobile = window.innerWidth <= 768;
+
+  if (isMobile) {
+    sidebar.classList.toggle('mobile-open');
+    overlay.style.display = sidebar.classList.contains('mobile-open') ? 'block' : 'none';
+  } else {
+    sidebar.classList.toggle('collapsed');
+  }
+};
+
 // Instância secundária EXCLUSIVA para criação de contas sem deslogar o admin no front
 const secSb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
   auth: {
@@ -98,6 +118,9 @@ function resetAppState() {
   ticketFilters.client = 'all';
   const searchInput = document.getElementById('ticket-search');
   if (searchInput) searchInput.value = '';
+
+  // Reseta Admin
+  if (typeof switchAdminTab === 'function') switchAdminTab('tab-licencas');
 }
 
 /**
@@ -300,10 +323,16 @@ let ticketFilters = {
 
 async function getTickets() {
   try {
-    const { data, error } = await sb.from('tickets').select('*');
+    // Busca os tickets junto com os dados ATUAIS do perfil e da empresa via Join
+    const { data, error } = await sb.from('tickets').select('*, profiles(name, companies(name))');
     if (error) throw error;
     return data || [];
-  } catch (e) { console.error('Erro ao ler Supabase', e); return []; }
+  } catch (e) { 
+    console.error('Erro ao ler Supabase (Join)', e); 
+    // Fallback simples caso o relacionamento ainda não esteja configurado
+    const { data: fallbackData } = await sb.from('tickets').select('*');
+    return fallbackData || []; 
+  }
 }
 
 async function saveTicket(ticket, isUpdate = false) {
@@ -396,10 +425,13 @@ async function renderTickets() {
     if (t.status === 'Respondido') statusClass = 'status-answered';
     if (t.status === 'Encerrado') statusClass = 'status-closed';
 
+    // Define o nome do solicitante em tempo real (Prioridade: Perfil Atual > Texto salvo no Ticket)
+    const requesterName = (t.profiles && t.profiles.name) ? t.profiles.name : (t.requester || '-');
+
     row.innerHTML = `
       <span class="t-code">${t.code}</span>
       <span class="t-title" title="${t.title}">${t.title}</span>
-      <span class="t-user" title="${t.requester}">${t.requester}</span>
+      <span class="t-user" title="${requesterName}">${requesterName}</span>
       <span class="t-date">${new Date(t.created_at).toLocaleDateString('pt-BR')}</span>
       <span><div class="badge ${statusClass}">${t.status}</div></span>
     `;
@@ -481,14 +513,18 @@ async function openTicketDetail(id) {
   const t = tickets.find(x => x.id === id);
   if (!t) return;
 
+  // Dados dinâmicos do autor e sua empresa atualizada
+  const requesterName = (t.profiles && t.profiles.name) ? t.profiles.name : (t.requester || '-');
+  const companyName = (t.profiles && t.profiles.companies && t.profiles.companies.name) ? t.profiles.companies.name : (t.company || '-');
+
   // Preenche dados
   document.getElementById('det-code').textContent = t.code;
   document.getElementById('det-title').textContent = t.title;
   document.getElementById('det-date').textContent = new Date(t.created_at).toLocaleString('pt-BR');
-  document.getElementById('det-top-requester').textContent = t.requester;
-  document.getElementById('det-sub-company').textContent = t.company;
+  document.getElementById('det-top-requester').textContent = requesterName;
+  document.getElementById('det-sub-company').textContent = companyName;
 
-  document.getElementById('det-desc-author').textContent = t.requester;
+  document.getElementById('det-desc-author').textContent = requesterName;
   document.getElementById('det-desc-date').textContent = new Date(t.created_at).toLocaleString('pt-BR');
   document.getElementById('det-desc').textContent = t.description;
 
@@ -598,16 +634,156 @@ async function updateTicketStatus(id, newStatus) {
   }
 }
 
+// Funções Globais de Suporte para o Admin (Chamadas pelo HTML)
+window.switchAdminTab = (tabId) => {
+  document.querySelectorAll('.admin-tab-content').forEach(c => c.style.display = 'none');
+  document.querySelectorAll('.nav-tab-btn').forEach(b => b.classList.remove('active'));
+  
+  const target = document.getElementById(tabId);
+  if (target) target.style.display = 'block';
+  
+  const btn = document.querySelector(`.nav-tab-btn[data-tab="${tabId}"]`);
+  if (btn) btn.classList.add('active');
+};
+
+let currentModalCallback = null;
+window.closeEditModal = () => {
+  document.getElementById('admin-edit-modal').style.display = 'none';
+  currentModalCallback = null;
+};
+
+window.openEditModal = (title, bodyHtml, callback) => {
+  document.getElementById('edit-modal-title').textContent = title;
+  document.getElementById('edit-form-body').innerHTML = bodyHtml;
+  document.getElementById('admin-edit-modal').style.display = 'flex';
+  currentModalCallback = callback;
+  if (window.lucide) lucide.createIcons();
+};
+
 function initAdminPanel() {
-  const form = document.getElementById('admin-create-user-form');
+  const userForm = document.getElementById('admin-create-user-form');
+  const companyForm = document.getElementById('admin-create-company-form');
+  const editForm = document.getElementById('admin-edit-form');
+  
   const errorBox = document.getElementById('admin-error');
   const successBox = document.getElementById('admin-success');
-  const btnTxt = document.getElementById('btn-create-u-txt');
 
-  // Listador Assíncrono da Tabela
+  // Variável para guardar empresas em cache para renderização rápida de nomes
+  let cachedCompanies = [];
+
+  // --- GESTÃO DE EMPRESAS ---
+
+  async function loadCompanies() {
+    try {
+      const { data, error } = await sb.from('companies').select('*').order('name');
+      if (error) throw error;
+      cachedCompanies = data || [];
+
+      // 1. Renderiza lista na aba de empresas
+      const list = document.getElementById('admin-companies-list');
+      if (list) {
+        list.innerHTML = '';
+        cachedCompanies.forEach(c => {
+          const tr = document.createElement('tr');
+          tr.style.borderBottom = '1px solid var(--border-light)';
+          tr.innerHTML = `
+            <td style="padding: 12px;">${c.name}</td>
+            <td style="padding: 12px; color: var(--text-secondary);">${c.cnpj || '-'}</td>
+            <td style="padding: 12px; font-size: 12px; color: var(--text-hint);">${c.address || '-'}</td>
+            <td style="padding: 12px; display: flex; gap: 8px;">
+               <button class="btn-edit" data-id="${c.id}" style="background: var(--surface-2); border: 1px solid var(--border); padding: 4px; border-radius: 4px; cursor: pointer; color: var(--accent);"><i data-lucide="edit-3" style="width:14px; height:14px;"></i></button>
+               <button class="btn-del" data-id="${c.id}" style="background: var(--surface-2); border: 1px solid var(--border); padding: 4px; border-radius: 4px; cursor: pointer; color: var(--danger-text);"><i data-lucide="trash-2" style="width:14px; height:14px;"></i></button>
+            </td>
+          `;
+          
+          tr.querySelector('.btn-edit').onclick = () => editCompany(c);
+          tr.querySelector('.btn-del').onclick = () => deleteCompany(c.id);
+          list.appendChild(tr);
+        });
+      }
+
+      // 2. Popula o Select no formulário de usuários e Filtro
+      const select = document.getElementById('admin-u-company-id');
+      const filterSelect = document.getElementById('admin-filter-company');
+
+      const companyOptions = cachedCompanies.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+
+      if (select) {
+        select.innerHTML = '<option value="">Selecione uma empresa...</option>' + companyOptions;
+      }
+      if (filterSelect) {
+        filterSelect.innerHTML = '<option value="all">Todas as Empresas</option>' + companyOptions;
+      }
+
+      if (window.lucide) lucide.createIcons();
+    } catch (e) { console.error('Erro empresas', e); }
+  }
+
+  async function saveCompany(e) {
+    e.preventDefault();
+    const name = document.getElementById('comp-nome').value;
+    const cnpj = document.getElementById('comp-cnpj').value;
+    const address = document.getElementById('comp-address').value;
+
+    try {
+      const { error } = await sb.from('companies').insert({ name, cnpj, address });
+      if (error) throw error;
+      companyForm.reset();
+      loadCompanies();
+    } catch (err) { alert('Erro ao salvar empresa: ' + err.message); }
+  }
+
+  async function editCompany(company) {
+    const html = `
+      <div class="field">
+        <label>Nome da Empresa</label>
+        <div class="input-wrap"><input type="text" id="edit-comp-name" value="${company.name}" required /></div>
+      </div>
+      <div class="field">
+        <label>CNPJ</label>
+        <div class="input-wrap"><input type="text" id="edit-comp-cnpj" value="${company.cnpj || ''}" /></div>
+      </div>
+      <div class="field" style="margin-top: 10px;">
+        <label>Endereço</label>
+        <div class="input-wrap"><input type="text" id="edit-comp-address" value="${company.address || ''}" /></div>
+      </div>
+    `;
+    
+    openEditModal('Editar Empresa', html, async () => {
+      const name = document.getElementById('edit-comp-name').value;
+      const cnpj = document.getElementById('edit-comp-cnpj').value;
+      const address = document.getElementById('edit-comp-address').value;
+      
+      const { error } = await sb.from('companies').update({ name, cnpj, address }).eq('id', company.id);
+      if (error) throw error;
+      loadCompanies();
+      loadUsersGrid(); // Recarrega lista de usuários caso o nome da empresa tenha mudado
+      closeEditModal();
+    });
+  }
+
+  async function deleteCompany(id) {
+    if (!confirm('Tem certeza que deseja excluir esta empresa? Usuários vinculados ficarão sem empresa.')) return;
+    try {
+      const { error } = await sb.from('companies').delete().eq('id', id);
+      if (error) throw error;
+      loadCompanies();
+      loadUsersGrid();
+    } catch (err) { alert('Erro ao deletar: ' + err.message); }
+  }
+
+  // --- GESTÃO DE USUÁRIOS (LICENÇAS) ---
+
   async function loadUsersGrid() {
     try {
-      const { data: users, error } = await sb.from('profiles').select('*');
+      const filterCompanyId = document.getElementById('admin-filter-company')?.value || 'all';
+      
+      let query = sb.from('profiles').select('*').order('created_at', { ascending: false });
+      if (filterCompanyId !== 'all') {
+        query = query.eq('company_id', filterCompanyId);
+      }
+
+      const { data: users, error } = await query;
       if (error) throw error;
       const tbody = document.getElementById('admin-users-list');
       if (!tbody) return;
@@ -617,7 +793,13 @@ function initAdminPanel() {
         const tr = document.createElement('tr');
         tr.style.borderBottom = '1px solid var(--border-light)';
 
-        // Formata as permissões legíveis para a tabela
+        // Remove o domínio interno para exibir apenas o login
+        const displayLogin = u.email.replace(AUTH_DOMAIN, '');
+
+        // Busca nome da empresa no cache
+        const companyObj = cachedCompanies.find(c => c.id === u.company_id);
+        const companyName = companyObj ? companyObj.name : (u.company || '-');
+
         let pms = [];
         if (u.permissions?.calc) pms.push('Calc');
         if (u.permissions?.trainings) pms.push('Vídeos');
@@ -626,27 +808,151 @@ function initAdminPanel() {
 
         tr.innerHTML = `
           <td style="padding: 12px;">${u.name || '(Sem Nome)'}</td>
-          <td style="padding: 12px; font-weight: 500;">${u.email}</td>
-          <td style="padding: 12px; color: var(--accent);">${u.company || '-'}</td>
+          <td style="padding: 12px; font-weight: 500; color: var(--accent);">${displayLogin}</td>
+          <td style="padding: 12px; font-family: monospace; font-size: 13px;">${u.access_key || '••••••'}</td>
+          <td style="padding: 12px;">${companyName}</td>
           <td style="padding: 12px;">
             <div style="display: flex; flex-wrap: wrap; gap: 4px;">
               ${pms.map(p => `<span style="font-size: 10px; padding: 2px 6px; border-radius: 4px; background: var(--sidebar-bg); color: var(--text-secondary);">${p}</span>`).join('')}
             </div>
           </td>
+          <td style="padding: 12px; display: flex; gap: 8px;">
+             <button class="btn-edit-u" title="Editar Usuário" style="background: var(--surface-2); border: 1px solid var(--border); padding: 4px; border-radius: 4px; cursor: pointer; color: var(--accent);"><i data-lucide="edit-3" style="width:14px; height:14px;"></i></button>
+             <button class="btn-pwd-u" title="Trocar Senha" style="background: var(--surface-2); border: 1px solid var(--border); padding: 4px; border-radius: 4px; cursor: pointer; color: #10b981;"><i data-lucide="key" style="width:14px; height:14px;"></i></button>
+             <button class="btn-del-u" title="Excluir" style="background: var(--surface-2); border: 1px solid var(--border); padding: 4px; border-radius: 4px; cursor: pointer; color: var(--danger-text);"><i data-lucide="trash-2" style="width:14px; height:14px;"></i></button>
+          </td>
         `;
+
+        tr.querySelector('.btn-edit-u').onclick = () => editUser(u);
+        tr.querySelector('.btn-pwd-u').onclick = () => adminChangePassword(u);
+        tr.querySelector('.btn-del-u').onclick = () => deleteUser(u.id);
+
         tbody.appendChild(tr);
       });
+      if (window.lucide) lucide.createIcons();
     } catch (e) { console.error('Erro na listagem', e); }
   }
 
-  // Motor Criação de Licenças via Secondary Supabase Client
-  if (form) {
-    form.onsubmit = async (e) => {
+  async function deleteUser(id) {
+    if (!confirm('Excluir este perfil de usuário? O acesso ao sistema será revogado imediatamente.')) return;
+    try {
+      const { error } = await sb.from('profiles').delete().eq('id', id);
+      if (error) throw error;
+      loadUsersGrid();
+    } catch (err) { alert('Erro ao excluir usuário: ' + err.message); }
+  }
+
+  async function editUser(user) {
+    const html = `
+      <div class="field">
+        <label>Nome Completo</label>
+        <div class="input-wrap"><input type="text" id="edit-u-nome" value="${user.name}" required /></div>
+      </div>
+      <div class="field" style="margin-top: 10px;">
+        <label>Alterar Empresa</label>
+        <div class="input-wrap">
+          <select id="edit-u-company-id" style="width: 100%; height: 40px; border-radius: 8px; padding: 0 12px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-primary);">
+            <option value="">Sem empresa vinculada</option>
+            ${cachedCompanies.map(c => `<option value="${c.id}" ${c.id === user.company_id ? 'selected' : ''}>${c.name}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+      <div class="field" style="margin-top: 15px;">
+        <label>Permissões de Acesso</label>
+        <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 12px; padding: 12px; background: var(--surface-2); border-radius: 8px; border: 1px solid var(--border);">
+           <label style="display: flex; gap: 12px; align-items: center; cursor: pointer; color: var(--text-primary); font-size: 14px;">
+              <input type="checkbox" id="edit-perm-calc" ${user.permissions?.calc ? 'checked' : ''} /> 
+              <span>Calculadora de H. Máxima</span>
+           </label>
+           <label style="display: flex; gap: 12px; align-items: center; cursor: pointer; color: var(--text-primary); font-size: 14px;">
+              <input type="checkbox" id="edit-perm-trainings" ${user.permissions?.trainings ? 'checked' : ''} /> 
+              <span>Treinamentos MyMetal</span>
+           </label>
+           <label style="display: flex; gap: 12px; align-items: center; cursor: pointer; color: var(--text-primary); font-size: 14px;">
+              <input type="checkbox" id="edit-perm-support" ${user.permissions?.support ? 'checked' : ''} /> 
+              <span>Central de Atendimento</span>
+           </label>
+           <label style="display: flex; gap: 12px; align-items: center; cursor: pointer; color: var(--text-primary); font-size: 14px;">
+              <input type="checkbox" id="edit-perm-admin" ${user.permissions?.admin ? 'checked' : ''} /> 
+              <span style="font-weight: 500; color: var(--accent);">Acesso Administrador</span>
+           </label>
+        </div>
+      </div>
+    `;
+
+    openEditModal('Editar Usuário', html, async () => {
+      const name = document.getElementById('edit-u-nome').value;
+      const company_id = document.getElementById('edit-u-company-id').value;
+      const perms = {
+        calc: document.getElementById('edit-perm-calc').checked,
+        trainings: document.getElementById('edit-perm-trainings').checked,
+        support: document.getElementById('edit-perm-support').checked,
+        admin: document.getElementById('edit-perm-admin').checked
+      };
+
+      const { error } = await sb.from('profiles').update({
+        name,
+        company_id,
+        role: perms.admin ? 'admin' : 'client',
+        permissions: perms,
+        // (Opcional) Senha não pode ser editada via profiles no Supabase, mas guardamos a chave inicial aqui se necessário
+      }).eq('id', user.id);
+
+      if (error) throw error;
+      loadUsersGrid();
+      closeEditModal();
+    });
+  }
+
+  async function adminChangePassword(user) {
+    const html = `
+      <div class="field">
+        <label>Nova Senha para <strong>${user.name}</strong></label>
+        <div class="input-wrap">
+          <input type="text" id="new-u-password" placeholder="Mínimo 6 caracteres" required />
+        </div>
+        <p style="font-size: 11px; color: var(--text-hint); margin-top: 8px;">A nova senha será aplicada imediatamente e o usuário precisará usá-la no próximo acesso.</p>
+      </div>
+    `;
+
+    openEditModal('Trocar Senha Manual', html, async () => {
+      const newPwd = document.getElementById('new-u-password').value;
+      if (!newPwd || newPwd.length < 6) {
+        alert('A senha deve ter pelo menos 6 caracteres.');
+        return;
+      }
+
+      try {
+        // 1. Chama a função SQL RPC para trocar no Auth do Supabase
+        const { error: rpcError } = await sb.rpc('admin_change_password', { 
+          target_user_id: user.id, 
+          new_password: newPwd 
+        });
+        if (rpcError) throw rpcError;
+
+        // 2. Sincroniza o perfil (access_key) para que o admin possa ver a nova senha
+        const { error: profError } = await sb.from('profiles').update({ access_key: newPwd }).eq('id', user.id);
+        if (profError) throw profError;
+
+        alert('Senha de ' + user.name + ' alterada com sucesso!');
+        loadUsersGrid();
+        closeEditModal();
+      } catch (err) {
+        console.error(err);
+        alert('Erro ao trocar senha: ' + err.message);
+      }
+    });
+  }
+
+  // --- HANDLERS EVENTOS ---
+
+  if (userForm) {
+    userForm.onsubmit = async (e) => {
       e.preventDefault();
       errorBox.style.display = 'none'; successBox.style.display = 'none';
 
       const uNome = document.getElementById('admin-u-nome').value;
-      const uEmpresa = document.getElementById('admin-u-empresa').value;
+      const uCompanyId = document.getElementById('admin-u-company-id').value;
       const uEmail = document.getElementById('admin-u-email').value;
       const uSenha = document.getElementById('admin-u-senha').value;
 
@@ -657,52 +963,78 @@ function initAdminPanel() {
         admin: document.getElementById('perm-admin').checked
       };
 
-      btnTxt.textContent = 'Gerando Chave...';
-      const btnO = form.querySelector('button[type="submit"]');
+      const btnO = userForm.querySelector('button[type="submit"]');
+      const btnTxt = document.getElementById('btn-create-u-txt');
+      btnTxt.textContent = 'Gerando...';
       btnO.disabled = true;
 
       try {
-        // Cria usuário invisivelmente no Supabase Auth sem te deslogar
-        const { data: signUpData, error: signUpError } = await secSb.auth.signUp({
-          email: uEmail,
-          password: uSenha
-        });
-        if (signUpError) throw signUpError;
+        const finalEmail = uEmail.includes('@') ? uEmail : uEmail.toLowerCase().trim() + AUTH_DOMAIN;
+        
+        const { data: authData, error: authError } = await secSb.auth.signUp({ email: finalEmail, password: uSenha });
+        if (authError) throw authError;
 
-        // Cadastra o Perfil na tabela corporativa do Supabase
-        const { error: profileError } = await sb.from('profiles').insert({
-          id: signUpData.user.id,
+        const { error: profError } = await sb.from('profiles').insert({
+          id: authData.user.id,
           name: uNome,
-          company: uEmpresa,
-          email: uEmail,
+          company_id: uCompanyId,
+          email: finalEmail,
+          access_key: uSenha, // Salva para visualização do Admin
           role: permissions.admin ? 'admin' : 'client',
           permissions: permissions,
           created_at: new Date().toISOString()
         });
-        if (profileError) throw profileError;
+        if (profError) throw profError;
 
-        // Apaga o rastro da sessão da memória pra evitar conflitos
         await secSb.auth.signOut();
-
         successBox.style.display = 'block';
-        form.reset();
-        btnTxt.textContent = 'Gerar Licença e Salvar';
-        btnO.disabled = false;
-
-        // Autorecarrega a tabela
+        userForm.reset();
         loadUsersGrid();
-
-      } catch (error) {
-        errorBox.textContent = 'Erro Supabase: ' + (error.code || '') + ' - ' + (error.message || error);
+      } catch (err) {
+        errorBox.textContent = 'Erro: ' + err.message;
         errorBox.style.display = 'block';
+      } finally {
         btnTxt.textContent = 'Gerar Licença e Salvar';
         btnO.disabled = false;
       }
     };
   }
 
-  // Dá o tiro inicial de relógio da tabela
-  loadUsersGrid();
+  if (companyForm) {
+    companyForm.onsubmit = saveCompany;
+  }
+
+  if (document.getElementById('btn-gen-pwd')) {
+    document.getElementById('btn-gen-pwd').onclick = (e) => {
+      e.preventDefault();
+      const randomPwd = Math.random().toString(36).slice(-6).toUpperCase();
+      document.getElementById('admin-u-senha').value = randomPwd;
+    };
+  }
+
+  // Handler Universal para os Modais de Edição (Usa a callback definida no openEditModal)
+  const editFormModal = document.getElementById('admin-edit-form');
+  if (editFormModal) {
+    editFormModal.onsubmit = async (e) => {
+      e.preventDefault();
+      if (currentModalCallback) {
+        try {
+          await currentModalCallback();
+        } catch (err) {
+          console.error(err);
+          alert('Erro ao salvar alterações: ' + err.message);
+        }
+      }
+    };
+  }
+
+  const companyFilter = document.getElementById('admin-filter-company');
+  if (companyFilter) {
+    companyFilter.onchange = () => loadUsersGrid();
+  }
+
+  // Carga inicial do painel
+  loadCompanies().then(() => loadUsersGrid());
 }
 
 let isSupportControlsInitialized = false;
@@ -968,7 +1300,7 @@ function renderView() {
   };
 
   if (guards[hash] === false) {
-    window.location.hash = 'view-home';
+    window.location.hash = 'view-forbidden';
     return;
   }
 
@@ -1059,6 +1391,10 @@ function initSupabaseAuthUI() {
 
     if (isAdm) initAdminPanel();
 
+    // Personalização do Dashboard
+    const welcomeName = document.getElementById('user-welcome-name');
+    if (welcomeName) welcomeName.textContent = profile.name || 'Usuário';
+
     overlay.style.display = 'none';
     mainApp.style.display = 'flex';
 
@@ -1070,6 +1406,36 @@ function initSupabaseAuthUI() {
     renderView();
     renderPerfis();
     initSupportControls();
+
+    // --- LOGICA DO MENU SANDUICHE (Toggle) ---
+    const btnToggle = document.getElementById('toggle-sidebar');
+    if (btnToggle) {
+      // Define ícone inicial baseado no estado atual
+      const isCollapsed = document.querySelector('.sidebar').classList.contains('collapsed');
+      btnToggle.innerHTML = `<i data-lucide="${isCollapsed ? 'chevron-right' : 'chevron-left'}"></i>`;
+      if (window.lucide) lucide.createIcons();
+
+      btnToggle.onclick = (e) => {
+        e.preventDefault();
+        if (window.toggleSidebar) {
+           window.toggleSidebar();
+           // Altera o ícone de acordo com o estado após o clique
+           const isCollapsed = document.querySelector('.sidebar').classList.contains('collapsed');
+           btnToggle.innerHTML = `<i data-lucide="${isCollapsed ? 'chevron-right' : 'chevron-left'}"></i>`;
+           if (window.lucide) lucide.createIcons();
+        }
+      };
+    }
+
+    // Auto-fechar menu no mobile ao clicar em um link
+    document.querySelectorAll('.menu-item').forEach(item => {
+      item.onclick = () => {
+        const sidebar = document.querySelector('.sidebar');
+        if (window.innerWidth <= 768 && sidebar.classList.contains('mobile-open')) {
+          if (window.toggleSidebar) window.toggleSidebar();
+        }
+      };
+    });
   }
 
   // ── Monitor de Autenticação ──────────────────────────────────────
@@ -1078,21 +1444,20 @@ function initSupabaseAuthUI() {
 
     if (event === 'INITIAL_SESSION') {
       if (session?.user) {
-        // F5: Tenta ler perfil do cache local (INSTANTÂNEO, sem banco)
-        const cached = localStorage.getItem(PROFILE_CACHE_KEY);
-        if (cached) {
-          try {
-            const profile = JSON.parse(cached);
-            if (profile.id === session.user.id) {
-              console.log('✅ Sessão restaurada do cache local');
-              setupApp(profile);
+        console.log('🔄 Restaurando sessão com validação no banco...');
+        // Em vez de usar o cache, buscamos sempre o perfil fresquinho do banco
+        sb.from('profiles').select('*').eq('id', session.user.id).limit(1)
+          .then(({ data, error }) => {
+            if (error || !data || data.length === 0) {
+              console.error('Erro ao validar perfil:', error);
+              showLoginForm('Acesso negado: Perfil não encontrado.');
               return;
             }
-          } catch (e) { /* cache corrompido */ }
-        }
-        // Sem cache: pede login novamente
-        localStorage.removeItem(PROFILE_CACHE_KEY);
-        showLoginForm('Sessão expirada. Faça login novamente.');
+            const profile = data[0];
+            const fullProfile = { id: session.user.id, email: session.user.email, ...profile };
+            localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(fullProfile));
+            setupApp(fullProfile);
+          });
       } else {
         showLoginForm();
       }
@@ -1122,10 +1487,12 @@ function initSupabaseAuthUI() {
     btnSubmit.disabled = true;
 
     try {
-      // 1. Autentica
-      const { data: authData, error: authError } = await sb.auth.signInWithPassword({ email, password: senha });
+      // 1. Autentica (Adiciona máscara se for apenas usuário)
+      const finalEmail = email.includes('@') ? email : email.toLowerCase().trim() + AUTH_DOMAIN;
+
+      const { data: authData, error: authError } = await sb.auth.signInWithPassword({ email: finalEmail, password: senha });
       if (authError) {
-        let msg = 'E-mail ou senha inválidos.';
+        let msg = 'Login ou senha inválidos.';
         if (authError.message.includes('Email not confirmed')) msg = '⚠️ E-mail não confirmado. Desative "Confirm email" no Dashboard.';
         showLoginForm(msg);
         return;
@@ -1180,6 +1547,18 @@ function initSupabaseAuthUI() {
       showLoginForm();
     }
   });
+
+  // ── Toggle Visualização de Senha ────────────────────────────────────
+  const toggleBtn = document.getElementById('toggle-password');
+  const pwdInput = document.getElementById('login-senha');
+  if (toggleBtn && pwdInput) {
+    toggleBtn.onclick = () => {
+      const isPwd = pwdInput.type === 'password';
+      pwdInput.type = isPwd ? 'text' : 'password';
+      toggleBtn.innerHTML = `<i data-lucide="${isPwd ? 'eye-off' : 'eye'}"></i>`;
+      if (window.lucide) lucide.createIcons();
+    };
+  }
 }
 
 
