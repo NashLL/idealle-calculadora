@@ -23,7 +23,7 @@
 <body>
 
   <!-- ==============================================
-       SISTEMA DE AUTENTICAÇÃO (LOGIN FIREBASE)
+       SISTEMA DE AUTENTICAÇÃO (LOGIN SUPABASE)
        ============================================== -->
   <div id="login-overlay" style="position: fixed; inset: 0; background: var(--bg); display: flex; align-items: center; justify-content: center; z-index: 9999;">
     <div class="card" style="width: 100%; max-width: 400px; padding: 40px; text-align: center;">
@@ -382,7 +382,7 @@
                   style="background:none; border:none; color:inherit; text-align:left; cursor:pointer; font:inherit; display:flex; align-items:center; gap:4px; padding:0;">Solicitante
                   <i data-lucide="arrow-down-up" style="width:12px; height:12px; opacity:0.3"
                     class="sort-icon"></i></button>
-                <button class="th-sort" data-sort="createdAt"
+                <button class="th-sort" data-sort="created_at"
                   style="background:none; border:none; color:var(--text-primary); text-align:left; cursor:pointer; font:inherit; display:flex; align-items:center; gap:4px; padding:0;">Data
                   <i data-lucide="arrow-down" style="width:12px; height:12px; opacity:1" class="sort-icon"></i></button>
                 <button class="th-sort" data-sort="status"
@@ -744,7 +744,7 @@
                 </tr>
               </thead>
               <tbody id="admin-users-list">
-                <!-- Gerado via JS Firestore -->
+                <!-- Gerado via JS Supabase -->
               </tbody>
             </table>
           </div>
@@ -761,11 +761,8 @@
        ENXERTO DE SCRIPTS AO FINAL DO DOCUMENTO
        ============================================== -->
 
-  <!-- CARREGANDO O MÓDULO DO FIREBASE COMPATÍVEL (NUVEM) -->
-  <script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-storage-compat.js"></script>
+  <!-- CARREGANDO O MÓDULO DO SUPABASE (NUVEM) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 
   <!-- Carregamento do sistema construtivo principal logico -->
   <script src="script.js"></script>

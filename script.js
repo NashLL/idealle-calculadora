@@ -1,30 +1,22 @@
 'use strict';
 
 /** ============================================================================
- * CONFIGURAÇÃO DO FIREBASE CLOUD (NUVEM)
- * ATENÇÃO: Substitua os dados abaixo pelos que o Firebase gerar no seu projeto
+ * CONFIGURAÇÃO DO SUPABASE (NUVEM)
  * ============================================================================ */
-const firebaseConfig = {
-  apiKey: "AIzaSyAfXDlTN8lDS3oY1j4nG3dvVQPwvjj-5qE",
-  authDomain: "mymetal-platform.firebaseapp.com",
-  projectId: "mymetal-platform",
-  storageBucket: "mymetal-platform.firebasestorage.app",
-  messagingSenderId: "753817624282",
-  appId: "1:753817624282:web:0ff608d514ce4189f6cfe3",
-  measurementId: "G-321TZP2VJF"
-};
+const SUPABASE_URL = 'https://stjrjonlarwhepclrmus.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN0anJqb25sYXJ3aGVwY2xybXVzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYzNTMwOTIsImV4cCI6MjA5MTkyOTA5Mn0.qvswg3lvbqNda-53oBXf-UcUAEZZUjVCVPC3AfmpTAA';
 
-// Inicializa o Firebase
-firebase.initializeApp(firebaseConfig);
-let db = firebase.firestore();
-let appAuth = firebase.auth();
+// Inicializa o Supabase (cliente principal)
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-// Instância secundária secreta EXCLUSIVA para criação de contas sem deslogar o admin no front
-const secondaryApp = firebase.initializeApp(firebaseConfig, "Secondary");
-const secAuth = secondaryApp.auth();
-
-// Inicializa o Storage (Cofre de Arquivos)
-const storage = firebase.storage();
+// Instância secundária EXCLUSIVA para criação de contas sem deslogar o admin no front
+const secSb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+  auth: {
+    storageKey: 'sb-secondary-auth',
+    autoRefreshToken: false,
+    persistSession: false
+  }
+});
 
 /**
  * Tabela de pressões de ensaio baseada na norma ABNT NBR 10821-2017.
@@ -32,11 +24,11 @@ const storage = firebase.storage();
  * Estrutura: { AlturaEdificioEmMetros: { Regiao: PressaoEmPa } }
  */
 const PRESSOES = {
-  6:  { 1: 350,  2: 470,  3: 610,  4: 770,  5: 950  },
-  15: { 1: 420,  2: 580,  3: 750,  4: 950,  5: 1180 },
-  30: { 1: 500,  2: 680,  3: 890,  4: 1130, 5: 1400 },
-  60: { 1: 600,  2: 815,  3: 1060, 4: 1350, 5: 1660 },
-  90: { 1: 660,  2: 890,  3: 1170, 4: 1480, 5: 1820 }
+  6: { 1: 350, 2: 470, 3: 610, 4: 770, 5: 950 },
+  15: { 1: 420, 2: 580, 3: 750, 4: 950, 5: 1180 },
+  30: { 1: 500, 2: 680, 3: 890, 4: 1130, 5: 1400 },
+  60: { 1: 600, 2: 815, 3: 1060, 4: 1350, 5: 1660 },
+  90: { 1: 660, 2: 890, 3: 1170, 4: 1480, 5: 1820 }
 };
 
 /**
@@ -44,8 +36,8 @@ const PRESSOES = {
  * Inicialmente preenchido com 2 perfis de exemplo.
  */
 let perfis = [
-  { nome: 'LG248', area: 272,  jx: 49594, wx: 2119, ix: 0 },
-  { nome: 'LG249', area: 250,  jx: 52794, wx: 2321, ix: 0 }
+  { nome: 'LG248', area: 272, jx: 49594, wx: 2119, ix: 0 },
+  { nome: 'LG249', area: 250, jx: 52794, wx: 2321, ix: 0 }
 ];
 
 /**
@@ -59,11 +51,11 @@ let perfis = [
  */
 function calcularHmax(larguraFolha, pressao, jxTotal) {
   if (!larguraFolha || !pressao || !jxTotal) return 0;
-  
-  const constanteAluminio = 30720000000; 
+
+  const constanteAluminio = 30720000000;
   const hCubo = (constanteAluminio * jxTotal) / (pressao * larguraFolha);
-  
-  return Math.round(Math.pow(hCubo, 1/3));
+
+  return Math.round(Math.pow(hCubo, 1 / 3));
 }
 
 /**
@@ -94,7 +86,7 @@ function initNavigation() {
     item.addEventListener('click', (e) => {
       e.preventDefault();
       const targetId = item.getAttribute('data-target');
-      if(targetId) window.location.hash = targetId;
+      if (targetId) window.location.hash = targetId;
     });
   });
 
@@ -105,33 +97,33 @@ function initNavigation() {
 
     // SEGURANÇA DE ROTEADOR: Se o cara tentar digitar na URL, eu barro aqui
     if (currentUser && currentUser.permissions) {
-       const p = currentUser.permissions;
-       let allowed = true;
-       if (targetId === 'view-calc' && !p.calc) allowed = false;
-       if (targetId === 'view-trainings' && !p.trainings) allowed = false;
-       if (targetId === 'view-support' && !p.support) allowed = false;
-       if (targetId === 'view-admin' && !p.admin) allowed = false;
+      const p = currentUser.permissions;
+      let allowed = true;
+      if (targetId === 'view-calc' && !p.calc) allowed = false;
+      if (targetId === 'view-trainings' && !p.trainings) allowed = false;
+      if (targetId === 'view-support' && !p.support) allowed = false;
+      if (targetId === 'view-admin' && !p.admin) allowed = false;
 
-       if (!allowed) {
-          targetId = 'view-forbidden';
-       }
+      if (!allowed) {
+        targetId = 'view-forbidden';
+      }
     }
 
     views.forEach(v => v.classList.remove('active'));
     menuItems.forEach(m => m.classList.remove('active'));
-    
+
     const activeMenu = document.querySelector(`.menu-item[data-target="${targetId}"]`);
-    if(activeMenu) activeMenu.classList.add('active');
+    if (activeMenu) activeMenu.classList.add('active');
 
     const targetView = document.getElementById(targetId);
-    if(targetView) targetView.classList.add('active');
+    if (targetView) targetView.classList.add('active');
 
     // Modifica o título principal da janela à qual o usuário navegou
-    if(targetId === 'view-home') topTitle.textContent = 'Dashboard / Visão Geral';
-    if(targetId === 'view-calc') topTitle.textContent = 'Ferramentas / Calculadora H. Máxima';
-    if(targetId === 'view-trainings') topTitle.textContent = 'MyMetal / Treinamentos';
-    if(targetId === 'view-admin') topTitle.textContent = 'Gestão / Licenças';
-    if(targetId === 'view-support') {
+    if (targetId === 'view-home') topTitle.textContent = 'Dashboard / Visão Geral';
+    if (targetId === 'view-calc') topTitle.textContent = 'Ferramentas / Calculadora H. Máxima';
+    if (targetId === 'view-trainings') topTitle.textContent = 'MyMetal / Treinamentos';
+    if (targetId === 'view-admin') topTitle.textContent = 'Gestão / Licenças';
+    if (targetId === 'view-support') {
       topTitle.textContent = 'Atendimento / Suporte';
       if (typeof renderTickets === 'function') renderTickets();
     }
@@ -163,14 +155,14 @@ function renderPerfis() {
   perfis.forEach((p, i) => {
     const row = document.createElement('div');
     row.className = 'perfil-row';
-    
+
     // Injeta os dados da array visualmente
     row.innerHTML = `
       <div><input type="text"   value="${p.nome}" placeholder="Nome"   data-i="${i}" data-k="nome" /></div>
       <div><input type="number" value="${p.area}" placeholder="mm²"    data-i="${i}" data-k="area" min="0" step="1" /></div>
       <div><input type="number" value="${p.jx}"   placeholder="mm⁴"    data-i="${i}" data-k="jx"   min="0" step="1" /></div>
       <div><input type="number" value="${p.wx}"   placeholder="mm³"    data-i="${i}" data-k="wx"   min="0" step="1" /></div>
-      <div><input type="number" value="${p.ix||0}" placeholder="mm⁴"   data-i="${i}" data-k="ix"   min="0" step="1" /></div>
+      <div><input type="number" value="${p.ix || 0}" placeholder="mm⁴"   data-i="${i}" data-k="ix"   min="0" step="1" /></div>
       <button class="btn-rm" data-i="${i}" title="Remover perfil">×</button>
     `;
     list.appendChild(row);
@@ -224,54 +216,54 @@ function atualizarJxTotal() {
  */
 function calcular() {
   // Extrai as premissas imputadas no documento HTML
-  const largura  = parseFloat(document.getElementById('largura').value)  || 0;
-  const folhas   = parseInt(document.getElementById('folhas').value)      || 2;
-  const altJan   = parseFloat(document.getElementById('alt_jan').value)   || 0;
-  const altEd    = parseFloat(document.getElementById('alt_ed').value);
-  const regiao   = parseInt(document.getElementById('regiao').value);
+  const largura = parseFloat(document.getElementById('largura').value) || 0;
+  const folhas = parseInt(document.getElementById('folhas').value) || 2;
+  const altJan = parseFloat(document.getElementById('alt_jan').value) || 0;
+  const altEd = parseFloat(document.getElementById('alt_ed').value);
+  const regiao = parseInt(document.getElementById('regiao').value);
 
   // Deriva cálculos secundários (Pressão cruzada NBR e Largura da Folha base)
-  const pressao  = (PRESSOES[altEd] || {})[regiao] || 0;
-  const folhaL   = largura > 0 ? Math.round(largura / folhas) : 0;
-  const jx       = somarJx();
+  const pressao = (PRESSOES[altEd] || {})[regiao] || 0;
+  const folhaL = largura > 0 ? Math.round(largura / folhas) : 0;
+  const jx = somarJx();
 
   // Recebe o núcleo de execução
-  const hmax     = calcularHmax(folhaL, pressao, jx);
-  const flecha   = hmax > 0 ? Math.min(30, Math.round(hmax / 175)) : 0;
+  const hmax = calcularHmax(folhaL, pressao, jx);
+  const flecha = hmax > 0 ? Math.min(30, Math.round(hmax / 175)) : 0;
 
   // Substitui os valores de UI do Resumo de Resultados 
-  document.getElementById('m-press').textContent   = pressao  ? pressao + ' Pa'                      : '—';
-  document.getElementById('m-folha').textContent   = folhaL   ? folhaL.toLocaleString('pt-BR') + ' mm' : '—';
-  document.getElementById('m-flecha').textContent  = flecha   ? flecha + ' mm'                       : '—';
-  document.getElementById('m-jx').textContent      = jx       ? jx.toLocaleString('pt-BR') + ' mm⁴'  : '—';
-  document.getElementById('m-hinser').textContent  = altJan   ? altJan.toLocaleString('pt-BR') + ' mm': '—';
-  document.getElementById('m-regiao').textContent  = 'Região ' + ['I','II','III','IV','V'][regiao - 1];
+  document.getElementById('m-press').textContent = pressao ? pressao + ' Pa' : '—';
+  document.getElementById('m-folha').textContent = folhaL ? folhaL.toLocaleString('pt-BR') + ' mm' : '—';
+  document.getElementById('m-flecha').textContent = flecha ? flecha + ' mm' : '—';
+  document.getElementById('m-jx').textContent = jx ? jx.toLocaleString('pt-BR') + ' mm⁴' : '—';
+  document.getElementById('m-hinser').textContent = altJan ? altJan.toLocaleString('pt-BR') + ' mm' : '—';
+  document.getElementById('m-regiao').textContent = 'Região ' + ['I', 'II', 'III', 'IV', 'V'][regiao - 1];
 
   // Mostra o Destacado Maior e Constrói a Barra percentual
-  document.getElementById('res-hmax').textContent  = hmax > 0 ? hmax.toLocaleString('pt-BR') : '—';
-  const pct    = (hmax > 0 && altJan > 0) ? Math.min(100, Math.round((altJan / hmax) * 100)) : 0;
-  const fill   = document.getElementById('bar-fill');
-  const badge  = document.getElementById('res-badge');
+  document.getElementById('res-hmax').textContent = hmax > 0 ? hmax.toLocaleString('pt-BR') : '—';
+  const pct = (hmax > 0 && altJan > 0) ? Math.min(100, Math.round((altJan / hmax) * 100)) : 0;
+  const fill = document.getElementById('bar-fill');
+  const badge = document.getElementById('res-badge');
 
   document.getElementById('bar-pct').textContent = pct > 0 ? pct + '%' : '—';
   fill.style.width = pct + '%';
 
   // Lógica dos Badges Coloridos de Avaliação e Barra de uso de Material (Aprovado Folga / Marginal / Reprovado)
   if (!hmax || !altJan) {
-    badge.textContent  = 'Insira todos os dados';
-    badge.className    = 'badge neutral';
+    badge.textContent = 'Insira todos os dados';
+    badge.className = 'badge neutral';
     fill.style.background = 'var(--border-strong)';
   } else if (altJan <= hmax * 0.9) {
-    badge.textContent  = 'Aprovado (Folga estrutural)';
-    badge.className    = 'badge ok';
+    badge.textContent = 'Aprovado (Folga estrutural)';
+    badge.className = 'badge ok';
     fill.style.background = 'var(--success-text)';
   } else if (altJan <= hmax) {
-    badge.textContent  = 'Aprovado (Margem baixa)';
-    badge.className    = 'badge warn';
+    badge.textContent = 'Aprovado (Margem baixa)';
+    badge.className = 'badge warn';
     fill.style.background = 'var(--warn-text)';
   } else {
-    badge.textContent  = 'Reprovado — excede o limite';
-    badge.className    = 'badge err';
+    badge.textContent = 'Reprovado — excede o limite';
+    badge.className = 'badge err';
     fill.style.background = 'var(--danger-text)';
   }
 
@@ -291,33 +283,35 @@ function timeAgo(dateString) {
   const diffInSeconds = Math.floor((now - date) / 1000);
 
   if (diffInSeconds < 60) return 'agora mesmo';
-  
+
   const diffInMinutes = Math.floor(diffInSeconds / 60);
   if (diffInMinutes < 60) return `há ${diffInMinutes} minuto${diffInMinutes > 1 ? 's' : ''}`;
-  
+
   const diffInHours = Math.floor(diffInMinutes / 60);
   if (diffInHours < 24) return `há ${diffInHours} hora${diffInHours > 1 ? 's' : ''}`;
-  
+
   const diffInDays = Math.floor(diffInHours / 24);
   if (diffInDays < 30) return `há ${diffInDays} dia${diffInDays > 1 ? 's' : ''}`;
-  
+
   const diffInMonths = Math.floor(diffInDays / 30);
   if (diffInMonths < 12) return `há ${diffInMonths} mês(es)`;
-  
+
   const diffInYears = Math.floor(diffInMonths / 12);
   return `há ${diffInYears} ano${diffInYears > 1 ? 's' : ''}`;
 }
 
 /**
- * Helper para subir arquivos ao Firebase Storage
- * Retorna a URL de download definitiva
+ * Helper para subir arquivos ao Supabase Storage
+ * Retorna a URL de download pública definitiva
  */
 async function uploadToStorage(file, folderPath) {
   if (!file) return null;
   const fileName = `${Date.now()}_${file.name}`;
-  const ref = storage.ref().child(`${folderPath}/${fileName}`);
-  const snapshot = await ref.put(file);
-  return await snapshot.ref.getDownloadURL();
+  const filePath = `${folderPath}/${fileName}`;
+  const { data, error } = await sb.storage.from('attachments').upload(filePath, file);
+  if (error) throw error;
+  const { data: urlData } = sb.storage.from('attachments').getPublicUrl(filePath);
+  return urlData.publicUrl;
 }
 
 let currentUser = null;
@@ -328,70 +322,68 @@ let pendingReplyFile = null;
 
 let ticketFilters = {
   text: '',
-  sort: 'desc',
+  sortCol: 'created_at',
+  sortDir: 'desc',
   client: 'all',
   statuses: ['Em espera', 'Em desenvolvimento', 'Aguardando resposta', 'Respondido']
 };
 
 async function getTickets() {
-  if (!db) return [];
   try {
-    const snapshot = await db.collection("tickets").get();
-    let result = [];
-    snapshot.forEach(doc => { result.push({ id: doc.id, ...doc.data() }) });
-    return result;
-  } catch(e) { console.error('Erro ao ler firestore', e); return []; }
+    const { data, error } = await sb.from('tickets').select('*');
+    if (error) throw error;
+    return data || [];
+  } catch (e) { console.error('Erro ao ler Supabase', e); return []; }
 }
 
 async function saveTicket(ticket, isUpdate = false) {
-  if (!db) return;
   try {
     if (isUpdate) {
-      await db.collection("tickets").doc(ticket.id).update(ticket);
+      const { id, ...rest } = ticket;
+      await sb.from('tickets').update(rest).eq('id', id);
     } else {
-      // Create sem ID (Firestore gera)
-      delete ticket.id; 
-      await db.collection("tickets").add(ticket);
+      delete ticket.id;
+      await sb.from('tickets').insert(ticket);
     }
-  } catch(e) { console.error('Erro salvar', e); }
+  } catch (e) { console.error('Erro salvar', e); }
 }
 
 async function renderTickets() {
   const list = document.getElementById('ticket-list');
-  if(!list) return;
+  if (!list) return;
 
   if (!currentUser) return; // Só carrega se autenticado
-  
+
   let tickets = await getTickets();
 
   // Update Section Title e Visibilidade de Filtro Cliente
   const secSubtitle = document.querySelector('#view-support .page-sub');
   const filterClientWrap = document.getElementById('filter-client-wrap');
-  
+
   if (currentUser.role === 'admin') {
-    if(secSubtitle) secSubtitle.textContent = 'Central de Chamados (Acesso Administrador: Vendo Todos)';
-    if(filterClientWrap) filterClientWrap.style.display = 'block';
+    if (secSubtitle) secSubtitle.textContent = 'Central de Chamados (Acesso Administrador: Vendo Todos)';
+    if (filterClientWrap) filterClientWrap.style.display = 'block';
   } else {
-    if(secSubtitle) secSubtitle.textContent = `Meus Chamados (Logado como ${currentUser.name})`;
-    if(filterClientWrap) filterClientWrap.style.display = 'none';
+    if (secSubtitle) secSubtitle.textContent = `Meus Chamados (Logado como ${currentUser.name})`;
+    if (filterClientWrap) filterClientWrap.style.display = 'none';
   }
 
   // 1. Role-based filtering
   if (currentUser.role === 'client') {
-    tickets = tickets.filter(t => t.authorId === currentUser.id);
+    tickets = tickets.filter(t => t.author_id === currentUser.id);
   }
 
   // 2. Text Search Filtering
   if (ticketFilters.text) {
     tickets = tickets.filter(t => {
-       const term = ticketFilters.text.toLowerCase();
-       return t.code.toLowerCase().includes(term) || t.title.toLowerCase().includes(term);
+      const term = ticketFilters.text.toLowerCase();
+      return t.code.toLowerCase().includes(term) || t.title.toLowerCase().includes(term);
     });
   }
 
   // 3. Client Filter (if Admin)
   if (currentUser.role === 'admin' && ticketFilters.client !== 'all') {
-    tickets = tickets.filter(t => t.authorId === ticketFilters.client);
+    tickets = tickets.filter(t => t.author_id === ticketFilters.client);
   }
 
   // 4. Status Filtering
@@ -403,7 +395,7 @@ async function renderTickets() {
     let valB = b[ticketFilters.sortCol] || '';
 
     // Tratamento especial para Datas e Status
-    if (ticketFilters.sortCol === 'createdAt') {
+    if (ticketFilters.sortCol === 'created_at') {
       valA = new Date(valA).getTime();
       valB = new Date(valB).getTime();
     } else {
@@ -426,19 +418,19 @@ async function renderTickets() {
   tickets.forEach(t => {
     const row = document.createElement('div');
     row.className = 'ticket-row';
-    
+
     // Status visual
     let statusClass = 'status-open';
-    if(t.status === 'Em desenvolvimento') statusClass = 'status-dev';
-    if(t.status === 'Aguardando resposta') statusClass = 'status-wait';
-    if(t.status === 'Respondido') statusClass = 'status-answered';
-    if(t.status === 'Encerrado') statusClass = 'status-closed';
+    if (t.status === 'Em desenvolvimento') statusClass = 'status-dev';
+    if (t.status === 'Aguardando resposta') statusClass = 'status-wait';
+    if (t.status === 'Respondido') statusClass = 'status-answered';
+    if (t.status === 'Encerrado') statusClass = 'status-closed';
 
     row.innerHTML = `
       <span class="t-code">${t.code}</span>
       <span class="t-title" title="${t.title}">${t.title}</span>
       <span class="t-user" title="${t.requester}">${t.requester}</span>
-      <span class="t-date">${new Date(t.createdAt).toLocaleDateString('pt-BR')}</span>
+      <span class="t-date">${new Date(t.created_at).toLocaleDateString('pt-BR')}</span>
       <span><div class="badge ${statusClass}">${t.status}</div></span>
     `;
 
@@ -457,14 +449,14 @@ function switchSupportView(viewId) {
   // Controla o botão + Novo Chamado e o Cabeçalho Global
   const btnNewTicket = document.getElementById('btn-new-ticket');
   const mainHeader = document.getElementById('support-main-header');
-  
+
   if (viewId === 'sup-view-detail') {
     if (btnNewTicket) btnNewTicket.style.display = 'none';
     if (mainHeader) mainHeader.style.display = 'none';
   } else {
     if (mainHeader) mainHeader.style.display = 'flex';
     if (btnNewTicket) {
-      if(viewId === 'sup-view-list') btnNewTicket.style.display = 'inline-flex';
+      if (viewId === 'sup-view-list') btnNewTicket.style.display = 'inline-flex';
       else btnNewTicket.style.display = 'none';
     }
   }
@@ -484,7 +476,7 @@ function renderTimeline(ticket) {
     const isOwner = r.role === 'admin';
     const row = document.createElement('div');
     row.className = 't-reply ' + (isOwner ? 'admin-reply' : '');
-    
+
     let attHtml = '';
     if (r.attachmentName && r.attachmentUrl) {
       attHtml = `
@@ -507,7 +499,7 @@ function renderTimeline(ticket) {
     `;
     container.appendChild(row);
   });
-  
+
   // Refresca os icones do lucide inseridos dinamicamente
   if (typeof window.lucide !== 'undefined') {
     window.lucide.createIcons();
@@ -522,36 +514,36 @@ async function openTicketDetail(id) {
   // Preenche dados
   document.getElementById('det-code').textContent = t.code;
   document.getElementById('det-title').textContent = t.title;
-  document.getElementById('det-date').textContent = new Date(t.createdAt).toLocaleString('pt-BR');
+  document.getElementById('det-date').textContent = new Date(t.created_at).toLocaleString('pt-BR');
   document.getElementById('det-top-requester').textContent = t.requester;
   document.getElementById('det-sub-company').textContent = t.company;
-  
+
   document.getElementById('det-desc-author').textContent = t.requester;
-  document.getElementById('det-desc-date').textContent = new Date(t.createdAt).toLocaleString('pt-BR');
+  document.getElementById('det-desc-date').textContent = new Date(t.created_at).toLocaleString('pt-BR');
   document.getElementById('det-desc').textContent = t.description;
-  
+
   // Set urgencia badge
   const urgBadge = document.getElementById('det-urgency');
   urgBadge.textContent = t.urgency.toUpperCase();
   urgBadge.className = 'badge';
-  if(t.urgency.toLowerCase() === 'crítica') urgBadge.classList.add('critic');
-  else if(t.urgency.toLowerCase() === 'alta') urgBadge.classList.add('high');
-  else if(t.urgency.toLowerCase() === 'média') urgBadge.classList.add('medium');
+  if (t.urgency.toLowerCase() === 'crítica') urgBadge.classList.add('critic');
+  else if (t.urgency.toLowerCase() === 'alta') urgBadge.classList.add('high');
+  else if (t.urgency.toLowerCase() === 'média') urgBadge.classList.add('medium');
   else urgBadge.classList.add('low');
 
   // Set anexos
   const attWrap = document.getElementById('det-attachment-wrap');
   const btnDownloadReal = document.getElementById('btn-download-anexo');
-  
-  if (t.attachmentName && t.attachmentUrl) {
+
+  if (t.attachment_name && t.attachment_url) {
     attWrap.style.display = 'block';
-    document.getElementById('det-anexo-nome').textContent = t.attachmentName;
-    
+    document.getElementById('det-anexo-nome').textContent = t.attachment_name;
+
     // Configura o link real de download
     if (btnDownloadReal) {
-      btnDownloadReal.onclick = function(e) {
+      btnDownloadReal.onclick = function (e) {
         e.preventDefault();
-        window.open(t.attachmentUrl, '_blank');
+        window.open(t.attachment_url, '_blank');
       };
     }
   } else {
@@ -560,12 +552,12 @@ async function openTicketDetail(id) {
 
   // Bind Formulario de Resposta
   const replyForm = document.getElementById('form-reply');
-  replyForm.onsubmit = async function(e) {
+  replyForm.onsubmit = async function (e) {
     e.preventDefault();
     const txtArea = document.getElementById('reply-text');
     const msg = txtArea.value.trim();
     const submitBtn = e.target.querySelector('button[type="submit"]');
-    
+
     if (!msg && !pendingReplyFile) return;
 
     const originalText = submitBtn.innerHTML;
@@ -584,13 +576,13 @@ async function openTicketDetail(id) {
       });
 
       await saveTicket(t, true);
-      
+
       txtArea.value = '';
       pendingReplyFile = null; // Limpa estado
       document.getElementById('reply-anexo-lbl').textContent = 'Anexar Arquivo';
       document.getElementById('reply-anexo-lbl').style.color = 'inherit';
       renderTimeline(t);
-    } catch(err) {
+    } catch (err) {
       console.error(err);
       alert('Erro ao enviar resposta.');
     } finally {
@@ -605,21 +597,21 @@ async function openTicketDetail(id) {
   // Set controle de status e evento isolado (remoção de evento anterior)
   const selStatus = document.getElementById('det-status-select');
   selStatus.value = t.status;
-  
+
   // Desativa select caso não seja Admin
   if (currentUser.role !== 'admin') {
-     selStatus.disabled = true;
-     selStatus.style.background = 'transparent';
-     selStatus.style.border = 'none';
-     selStatus.style.appearance = 'none';
+    selStatus.disabled = true;
+    selStatus.style.background = 'transparent';
+    selStatus.style.border = 'none';
+    selStatus.style.appearance = 'none';
   } else {
-     selStatus.disabled = false;
-     selStatus.style.background = 'var(--surface)';
-     selStatus.style.border = '1px solid var(--border-strong)';
-     selStatus.style.appearance = 'auto';
+    selStatus.disabled = false;
+    selStatus.style.background = 'var(--surface)';
+    selStatus.style.border = '1px solid var(--border-strong)';
+    selStatus.style.appearance = 'auto';
   }
-  
-  selStatus.onchange = function(e) {
+
+  selStatus.onchange = function (e) {
     updateTicketStatus(t.id, e.target.value);
   };
 
@@ -645,16 +637,16 @@ function initAdminPanel() {
   // Listador Assíncrono da Tabela
   async function loadUsersGrid() {
     try {
-      const snap = await db.collection('users').get();
+      const { data: users, error } = await sb.from('profiles').select('*');
+      if (error) throw error;
       const tbody = document.getElementById('admin-users-list');
       if (!tbody) return;
       tbody.innerHTML = '';
-      
-      snap.forEach(doc => {
-        const u = doc.data();
+
+      (users || []).forEach(u => {
         const tr = document.createElement('tr');
         tr.style.borderBottom = '1px solid var(--border-light)';
-        
+
         // Formata as permissões legíveis para a tabela
         let pms = [];
         if (u.permissions?.calc) pms.push('Calc');
@@ -674,20 +666,20 @@ function initAdminPanel() {
         `;
         tbody.appendChild(tr);
       });
-    } catch(e) { console.error('Erro na listagem', e); }
+    } catch (e) { console.error('Erro na listagem', e); }
   }
 
-  // Motor Criação de Licenças via Secondary App
+  // Motor Criação de Licenças via Secondary Supabase Client
   if (form) {
     form.onsubmit = async (e) => {
       e.preventDefault();
       errorBox.style.display = 'none'; successBox.style.display = 'none';
-      
+
       const uNome = document.getElementById('admin-u-nome').value;
       const uEmpresa = document.getElementById('admin-u-empresa').value;
       const uEmail = document.getElementById('admin-u-email').value;
       const uSenha = document.getElementById('admin-u-senha').value;
-      
+
       const permissions = {
         calc: document.getElementById('perm-calc').checked,
         trainings: document.getElementById('perm-trainings').checked,
@@ -700,32 +692,38 @@ function initAdminPanel() {
       btnO.disabled = true;
 
       try {
-        // Cria usuário invisivelmente no Cofre do Auth Google sem te deslogar
-        const cred = await secAuth.createUserWithEmailAndPassword(uEmail, uSenha);
-        
-        // Cadastra o Perfil na coleção corporativa do Firestore
-        await db.collection('users').doc(cred.user.uid).set({
+        // Cria usuário invisivelmente no Supabase Auth sem te deslogar
+        const { data: signUpData, error: signUpError } = await secSb.auth.signUp({
+          email: uEmail,
+          password: uSenha
+        });
+        if (signUpError) throw signUpError;
+
+        // Cadastra o Perfil na tabela corporativa do Supabase
+        const { error: profileError } = await sb.from('profiles').insert({
+          id: signUpData.user.id,
           name: uNome,
           company: uEmpresa,
           email: uEmail,
           role: permissions.admin ? 'admin' : 'client',
           permissions: permissions,
-          createdAt: new Date().toISOString()
+          created_at: new Date().toISOString()
         });
+        if (profileError) throw profileError;
 
         // Apaga o rastro da sessão da memória pra evitar conflitos
-        await secAuth.signOut();
+        await secSb.auth.signOut();
 
         successBox.style.display = 'block';
         form.reset();
         btnTxt.textContent = 'Gerar Licença e Salvar';
         btnO.disabled = false;
-        
-        // Autorecarrega a tabela
-        loadUsersGrid(); 
 
-      } catch(error) {
-        errorBox.textContent = 'Erro de Rede Google: ' + error.code + ' - ' + error.message;
+        // Autorecarrega a tabela
+        loadUsersGrid();
+
+      } catch (error) {
+        errorBox.textContent = 'Erro Supabase: ' + (error.code || '') + ' - ' + (error.message || error);
         errorBox.style.display = 'block';
         btnTxt.textContent = 'Gerar Licença e Salvar';
         btnO.disabled = false;
@@ -772,7 +770,7 @@ function initSupportControls() {
       const activeIcon = th.querySelector('.sort-icon');
       activeIcon.setAttribute('data-lucide', ticketFilters.sortDir === 'desc' ? 'arrow-down' : 'arrow-up');
       activeIcon.style.opacity = '1';
-      
+
       if (window.lucide) lucide.createIcons();
 
       renderTickets();
@@ -792,13 +790,13 @@ function initSupportControls() {
   }
 
   // Removido listener do MockSwitcher pois não há mais usuários ficticios! 
-  
+
   // Navigation internal
   document.getElementById('btn-new-ticket').addEventListener('click', () => {
     // Auto fill readonly fields
     document.getElementById('tk-nome').value = currentUser.name;
     document.getElementById('tk-empresa').value = currentUser.company;
-    
+
     switchSupportView('sup-view-form');
   });
 
@@ -840,14 +838,14 @@ function initSupportControls() {
 
   // Upload visual hint & Limit logic (Agora com Upload Real em Background)
   const tkAnexo = document.getElementById('tk-anexo');
-  if(tkAnexo) {
+  if (tkAnexo) {
     tkAnexo.addEventListener('change', async (e) => {
       const lbl = document.getElementById('tk-anexo-lbl');
       const submitBtn = document.querySelector('#form-ticket button[type="submit"]');
 
       if (e.target.files.length > 0) {
         const file = e.target.files[0];
-        if (file.size > 5 * 1024 * 1024) { 
+        if (file.size > 5 * 1024 * 1024) {
           alert('Arquivo excedeu o limite de 5MB.');
           e.target.value = '';
           lbl.textContent = 'Escolher um arquivo...';
@@ -868,7 +866,7 @@ function initSupportControls() {
           const tempId = Date.now().toString();
           const url = await uploadToStorage(file, `tickets/temp_${tempId}`);
           pendingTicketFile = { name: file.name, url: url };
-          
+
           lbl.textContent = '✓ ' + file.name;
           lbl.style.color = 'var(--success-text)';
         } catch (err) {
@@ -892,7 +890,7 @@ function initSupportControls() {
 
   // Reply Attachment listener (Background Upload)
   const replyAnexo = document.getElementById('reply-anexo');
-  if(replyAnexo) {
+  if (replyAnexo) {
     replyAnexo.addEventListener('change', async (e) => {
       const file = e.target.files[0];
       const lbl = document.getElementById('reply-anexo-lbl');
@@ -928,11 +926,11 @@ function initSupportControls() {
   // Form submit
   document.getElementById('form-ticket').addEventListener('submit', async (e) => {
     e.preventDefault();
-    
+
     const submitBtn = e.target.querySelector('button[type="submit"]');
     const originalText = submitBtn.innerHTML;
-    
-    const code = 'SUP-' + Math.floor(1000 + Math.random() * 9000); 
+
+    const code = 'SUP-' + Math.floor(1000 + Math.random() * 9000);
 
     submitBtn.innerHTML = 'Gravando chamado...';
     submitBtn.disabled = true;
@@ -940,16 +938,16 @@ function initSupportControls() {
     try {
       const newTicket = {
         code: code,
-        authorId: currentUser.id,
+        author_id: currentUser.id,
         requester: document.getElementById('tk-nome').value,
         company: document.getElementById('tk-empresa').value,
         title: document.getElementById('tk-titulo').value,
         description: document.getElementById('tk-desc').value,
         urgency: document.getElementById('tk-urgencia').value,
         status: 'Em espera',
-        createdAt: new Date().toISOString(),
-        attachmentName: pendingTicketFile ? pendingTicketFile.name : null,
-        attachmentUrl: pendingTicketFile ? pendingTicketFile.url : null,
+        created_at: new Date().toISOString(),
+        attachment_name: pendingTicketFile ? pendingTicketFile.name : null,
+        attachment_url: pendingTicketFile ? pendingTicketFile.url : null,
         replies: []
       };
 
@@ -959,12 +957,12 @@ function initSupportControls() {
       pendingTicketFile = null; // Limpa para o próximo
       document.getElementById('tk-anexo-lbl').textContent = 'Escolher um arquivo...';
       document.getElementById('tk-anexo-lbl').style.color = 'inherit';
-      
+
       renderTickets();
       switchSupportView('sup-view-list');
-      
+
       alert('Chamado ' + code + ' aberto com sucesso!');
-    } catch(err) {
+    } catch (err) {
       console.error(err);
       alert('Erro ao abrir chamado.');
     } finally {
@@ -974,63 +972,71 @@ function initSupportControls() {
   });
 }
 
-function initFirebaseAuthUI() {
+function initSupabaseAuthUI() {
   const overlay = document.getElementById('login-overlay');
   const mainApp = document.getElementById('app-wrapper');
 
-  // Listener de Estado Assíncrono (Rede Firebase)
-  appAuth.onAuthStateChanged(async function(user) {
+  // Função centralizada que processa o usuário autenticado
+  async function handleAuthUser(user) {
     if (user) {
       // LOGADO: Buscar credencial oficial no Banco de Dados antes de abrir porta
       try {
-        const userDoc = await db.collection('users').doc(user.uid).get();
-        
-        if (userDoc.exists) {
-          currentUser = { id: user.uid, email: user.email, ...userDoc.data() };
-          
+        const { data: profile, error } = await sb.from('profiles').select('*').eq('id', user.id).single();
+
+        if (profile && !error) {
+          currentUser = { id: user.id, email: user.email, ...profile };
+
           // Compatibilidade: Se usuário antigo não tem objeto 'permissions', criamos baseado na role antiga
           if (!currentUser.permissions) {
-             currentUser.permissions = {
-               calc: true,
-               trainings: true,
-               support: true,
-               admin: currentUser.role === 'admin'
-             };
+            currentUser.permissions = {
+              calc: true,
+              trainings: true,
+              support: true,
+              admin: currentUser.role === 'admin'
+            };
           }
         } else {
           // Fallback de Sobrevivência: Se é admin de email e banco ta zerado, auto-promove ele pela 1a vez
           if (user.email.includes('admin') || user.email.includes('ericnash2011')) {
-             currentUser = {
-               id: user.uid, email: user.email,
-               name: user.displayName || 'Admin Oficial (Mestre)',
-               role: 'admin',
-               company: 'Idealle',
-               permissions: { calc: true, trainings: true, support: true, admin: true }
-             };
-             await db.collection('users').doc(user.uid).set(currentUser);
+            currentUser = {
+              id: user.id, email: user.email,
+              name: user.user_metadata?.full_name || 'Admin Oficial (Mestre)',
+              role: 'admin',
+              company: 'Idealle',
+              permissions: { calc: true, trainings: true, support: true, admin: true }
+            };
+            await sb.from('profiles').upsert({
+              id: currentUser.id,
+              name: currentUser.name,
+              email: currentUser.email,
+              role: currentUser.role,
+              company: currentUser.company,
+              permissions: currentUser.permissions,
+              created_at: new Date().toISOString()
+            });
           } else {
-             // Usuário não catalogado / Licença Fantasma
-             appAuth.signOut();
-             alert('ACESSO NEGADO: Sua licença não consta na Base de Dados. Peça ao Administrador do painel para gerar a sua chave de acesso.');
-             return;
+            // Usuário não catalogado / Licença Fantasma
+            sb.auth.signOut();
+            alert('ACESSO NEGADO: Sua licença não consta na Base de Dados. Peça ao Administrador para gerar a sua chave de acesso.');
+            return;
           }
         }
 
         // Toggles da interface visual de segurança baseado nas PERMISSÕES GRANULARES
         const p = currentUser.permissions;
-        
+
         // Menus Individuais
-        if(document.getElementById('nav-item-calc')) document.getElementById('nav-item-calc').style.display = p.calc ? 'flex' : 'none';
-        if(document.getElementById('nav-item-trainings')) document.getElementById('nav-item-trainings').style.display = p.trainings ? 'flex' : 'none';
-        if(document.getElementById('nav-item-support')) document.getElementById('nav-item-support').style.display = p.support ? 'flex' : 'none';
-        
+        if (document.getElementById('nav-item-calc')) document.getElementById('nav-item-calc').style.display = p.calc ? 'flex' : 'none';
+        if (document.getElementById('nav-item-trainings')) document.getElementById('nav-item-trainings').style.display = p.trainings ? 'flex' : 'none';
+        if (document.getElementById('nav-item-support')) document.getElementById('nav-item-support').style.display = p.support ? 'flex' : 'none';
+
         const navItemAdmin = document.getElementById('nav-item-admin');
-        if(navItemAdmin) navItemAdmin.style.display = p.admin ? 'flex' : 'none';
+        if (navItemAdmin) navItemAdmin.style.display = p.admin ? 'flex' : 'none';
 
         // Grupos Inteiros (Categorias)
-        if(document.getElementById('grp-ferramentas')) document.getElementById('grp-ferramentas').style.display = p.calc ? 'block' : 'none';
-        if(document.getElementById('grp-mymetal')) document.getElementById('grp-mymetal').style.display = p.trainings ? 'block' : 'none';
-        if(document.getElementById('grp-suporte')) document.getElementById('grp-suporte').style.display = (p.support || p.admin) ? 'block' : 'none';
+        if (document.getElementById('grp-ferramentas')) document.getElementById('grp-ferramentas').style.display = p.calc ? 'block' : 'none';
+        if (document.getElementById('grp-mymetal')) document.getElementById('grp-mymetal').style.display = p.trainings ? 'block' : 'none';
+        if (document.getElementById('grp-suporte')) document.getElementById('grp-suporte').style.display = (p.support || p.admin) ? 'block' : 'none';
 
         if (p.admin) {
           initAdminPanel();
@@ -1038,25 +1044,25 @@ function initFirebaseAuthUI() {
 
         overlay.style.display = 'none';
         mainApp.style.display = 'flex';
-        
+
         // Atualiza SVGs dos botões no caso de recarga interna
         if (window.lucide) lucide.createIcons();
-        
+
         // RECICLAGEM E PROTEÇÃO VISUAL URL: Sempre reseta para a Home no Login
         // Isso evita que um usuário sem permissão herde o link (#view-admin) de uma sessão anterior
         window.location.hash = 'view-home';
-        
+
         // Força a renderização imediata da Home caso o browser demore a disparar o evento
         window.dispatchEvent(new Event('hashchange'));
-        
+
         // Carrega sistema base
         initNavigation();
         renderPerfis();
         initSupportControls();
-      } catch(e) {
+      } catch (e) {
         console.error(e);
         alert('Erro ao checar permissões bloqueadas por segurança.');
-        appAuth.signOut();
+        sb.auth.signOut();
       }
     } else {
       // NÃO-LOGADO: Retorna fechadura e deleta vars em memoria local
@@ -1067,42 +1073,61 @@ function initFirebaseAuthUI() {
       // Libera o botão "Autenticando..." de volta pro estado normal
       const btnLog = document.querySelector('#login-form button[type="submit"]');
       if (btnLog) {
-         btnLog.disabled = false;
-         btnLog.textContent = 'Entrar na Plataforma';
+        btnLog.disabled = false;
+        btnLog.textContent = 'Entrar na Plataforma';
       }
+    }
+  }
+
+  // Listener de Estado Assíncrono (Rede Supabase)
+  sb.auth.onAuthStateChange(async (event, session) => {
+    if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+      await handleAuthUser(session?.user || null);
+    } else if (event === 'SIGNED_OUT') {
+      await handleAuthUser(null);
+    }
+  });
+
+  // Checagem inicial de sessão existente (para recargas de página)
+  sb.auth.getSession().then(({ data: { session } }) => {
+    if (session?.user) {
+      handleAuthUser(session.user);
+    } else {
+      handleAuthUser(null);
     }
   });
 
   // Listener Formulário Login
-  document.getElementById('login-form').addEventListener('submit', (e) => {
+  document.getElementById('login-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const email = document.getElementById('login-email').value;
     const senha = document.getElementById('login-senha').value;
     const btnSubmit = e.target.querySelector('button[type="submit"]');
-    
+
     document.getElementById('login-error').style.display = 'none';
-    
+
     // Feedback tátil de Loading para o usuário perceber que o click funcionou
     const btnOriginalText = btnSubmit.textContent;
     btnSubmit.textContent = 'Autenticando na Nuvem...';
     btnSubmit.disabled = true;
 
-    appAuth.signInWithEmailAndPassword(email, senha)
-      .catch((error) => {
-        btnSubmit.textContent = btnOriginalText;
-        btnSubmit.disabled = false;
-        
-        // Jogo o erro nativo do Firebase na tela
-        document.getElementById('login-error').textContent = 'Erro Firebase: ' + error.code + ' - ' + error.message;
-        document.getElementById('login-error').style.display = 'block';
-        alert('Erro ao conectar ao Google Firebase: ' + error.message);
-      });
+    const { error } = await sb.auth.signInWithPassword({ email, password: senha });
+
+    if (error) {
+      btnSubmit.textContent = btnOriginalText;
+      btnSubmit.disabled = false;
+
+      // Jogo o erro nativo do Supabase na tela
+      document.getElementById('login-error').textContent = 'Erro Supabase: ' + (error.code || '') + ' - ' + error.message;
+      document.getElementById('login-error').style.display = 'block';
+      alert('Erro ao conectar ao Supabase: ' + error.message);
+    }
   });
 
   // Listener Logout
   document.getElementById('btn-logout').addEventListener('click', (e) => {
     e.preventDefault();
-    appAuth.signOut();
+    sb.auth.signOut();
   });
 }
 
@@ -1110,8 +1135,8 @@ function initFirebaseAuthUI() {
  * Função global de arranque
  */
 document.addEventListener('DOMContentLoaded', () => {
-  // Inicialização Bloqueada por Autenticação. Só destrava no onAuthStateChanged.
-  initFirebaseAuthUI();
+  // Inicialização Bloqueada por Autenticação. Só destrava no onAuthStateChange.
+  initSupabaseAuthUI();
 
   // Escuta os botões de execução independentes da calculadora
   document.getElementById('btn-add-perfil').addEventListener('click', () => {
