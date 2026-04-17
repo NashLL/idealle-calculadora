@@ -975,159 +975,157 @@ function initSupportControls() {
 function initSupabaseAuthUI() {
   const overlay = document.getElementById('login-overlay');
   const mainApp = document.getElementById('app-wrapper');
+  const loginForm = document.getElementById('login-form');
+  const loginError = document.getElementById('login-error');
+
+  // Helper para resetar botões de login
+  function resetLoginButton() {
+    const btnLog = loginForm?.querySelector('button[type="submit"]');
+    if (btnLog) {
+      btnLog.disabled = false;
+      btnLog.textContent = 'Entrar na Plataforma';
+    }
+  }
 
   // Função centralizada que processa o usuário autenticado
   async function handleAuthUser(user) {
     if (user) {
-      // LOGADO: Buscar credencial oficial no Banco de Dados antes de abrir porta
       try {
+        // LOGADO: Buscar credencial oficial no Banco de Dados
         const { data: profile, error } = await sb.from('profiles').select('*').eq('id', user.id).single();
 
         if (profile && !error) {
           currentUser = { id: user.id, email: user.email, ...profile };
-
-          // Compatibilidade: Se usuário antigo não tem objeto 'permissions', criamos baseado na role antiga
+          
           if (!currentUser.permissions) {
             currentUser.permissions = {
-              calc: true,
-              trainings: true,
-              support: true,
-              admin: currentUser.role === 'admin'
+              calc: true, trainings: true, support: true, admin: currentUser.role === 'admin'
             };
           }
         } else {
-          // Fallback de Sobrevivência: Se é admin de email e banco ta zerado, auto-promove ele pela 1a vez
+          // Fallback para e-mails de admin conhecidos ou novos usuários sem perfil
           if (user.email.includes('admin') || user.email.includes('ericnash2011')) {
             currentUser = {
               id: user.id, email: user.email,
-              name: user.user_metadata?.full_name || 'Admin Oficial (Mestre)',
-              role: 'admin',
-              company: 'Idealle',
+              name: user.user_metadata?.full_name || 'Admin Oficial',
+              role: 'admin', company: 'Idealle',
               permissions: { calc: true, trainings: true, support: true, admin: true }
             };
             await sb.from('profiles').upsert({
-              id: currentUser.id,
-              name: currentUser.name,
-              email: currentUser.email,
-              role: currentUser.role,
-              company: currentUser.company,
-              permissions: currentUser.permissions,
+              id: currentUser.id, name: currentUser.name, email: currentUser.email,
+              role: currentUser.role, company: currentUser.company, permissions: currentUser.permissions,
               created_at: new Date().toISOString()
             });
           } else {
-            // Usuário não catalogado / Licença Fantasma
-            sb.auth.signOut();
-            alert('ACESSO NEGADO: Sua licença não consta na Base de Dados. Peça ao Administrador para gerar a sua chave de acesso.');
+            // Se não tem perfil nem é admin mestre, barra o acesso
+            await sb.auth.signOut();
+            alert('ACESSO NEGADO: Sua licença não foi encontrada no banco de dados.');
             return;
           }
         }
 
-        // Toggles da interface visual de segurança baseado nas PERMISSÕES GRANULARES
+        // Toggles da interface baseada em permissões
         const p = currentUser.permissions;
-
-        // Menus Individuais
         if (document.getElementById('nav-item-calc')) document.getElementById('nav-item-calc').style.display = p.calc ? 'flex' : 'none';
         if (document.getElementById('nav-item-trainings')) document.getElementById('nav-item-trainings').style.display = p.trainings ? 'flex' : 'none';
         if (document.getElementById('nav-item-support')) document.getElementById('nav-item-support').style.display = p.support ? 'flex' : 'none';
-
+        
         const navItemAdmin = document.getElementById('nav-item-admin');
         if (navItemAdmin) navItemAdmin.style.display = p.admin ? 'flex' : 'none';
 
-        // Grupos Inteiros (Categorias)
         if (document.getElementById('grp-ferramentas')) document.getElementById('grp-ferramentas').style.display = p.calc ? 'block' : 'none';
         if (document.getElementById('grp-mymetal')) document.getElementById('grp-mymetal').style.display = p.trainings ? 'block' : 'none';
         if (document.getElementById('grp-suporte')) document.getElementById('grp-suporte').style.display = (p.support || p.admin) ? 'block' : 'none';
 
-        if (p.admin) {
-          initAdminPanel();
-        }
+        if (p.admin) initAdminPanel();
 
         overlay.style.display = 'none';
         mainApp.style.display = 'flex';
 
-        // Atualiza SVGs dos botões no caso de recarga interna
         if (window.lucide) lucide.createIcons();
-
-        // RECICLAGEM E PROTEÇÃO VISUAL URL: Sempre reseta para a Home no Login
-        // Isso evita que um usuário sem permissão herde o link (#view-admin) de uma sessão anterior
-        window.location.hash = 'view-home';
-
-        // Força a renderização imediata da Home caso o browser demore a disparar o evento
+        
+        // Mantém a posição se já estiver em alguma view, senão vai pra home
+        if (!window.location.hash || window.location.hash === '#login-overlay') {
+          window.location.hash = 'view-home';
+        }
         window.dispatchEvent(new Event('hashchange'));
 
-        // Carrega sistema base
         initNavigation();
         renderPerfis();
         initSupportControls();
       } catch (e) {
-        console.error(e);
-        alert('Erro ao checar permissões bloqueadas por segurança.');
-        sb.auth.signOut();
+        console.error('Erro ao processar login:', e);
+        await sb.auth.signOut();
       }
     } else {
-      // NÃO-LOGADO: Retorna fechadura e deleta vars em memoria local
+      // NÃO-LOGADO: Limpa estado e volta pro formulário
       currentUser = null;
       overlay.style.display = 'flex';
       mainApp.style.display = 'none';
-
-      // Libera o botão "Autenticando..." de volta pro estado normal
-      const btnLog = document.querySelector('#login-form button[type="submit"]');
-      if (btnLog) {
-        btnLog.disabled = false;
-        btnLog.textContent = 'Entrar na Plataforma';
-      }
+      resetLoginButton();
     }
   }
 
-  // Listener de Estado Assíncrono (Rede Supabase)
+  // Monitor de Autenticação Unificado (Supabase v2)
   sb.auth.onAuthStateChange(async (event, session) => {
-    if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-      await handleAuthUser(session?.user || null);
-    } else if (event === 'SIGNED_OUT') {
+    console.log('Evento Auth:', event);
+    
+    if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED') {
+      if (session?.user) await handleAuthUser(session.user);
+    } 
+    
+    if (event === 'SIGNED_OUT') {
       await handleAuthUser(null);
     }
   });
 
-  // Checagem inicial de sessão existente (para recargas de página)
-  sb.auth.getSession().then(({ data: { session } }) => {
-    if (session?.user) {
-      handleAuthUser(session.user);
-    } else {
-      handleAuthUser(null);
-    }
-  });
-
   // Listener Formulário Login
-  document.getElementById('login-form').addEventListener('submit', async (e) => {
+  loginForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const email = document.getElementById('login-email').value;
     const senha = document.getElementById('login-senha').value;
     const btnSubmit = e.target.querySelector('button[type="submit"]');
 
-    document.getElementById('login-error').style.display = 'none';
-
-    // Feedback tátil de Loading para o usuário perceber que o click funcionou
+    loginError.style.display = 'none';
     const btnOriginalText = btnSubmit.textContent;
     btnSubmit.textContent = 'Autenticando na Nuvem...';
     btnSubmit.disabled = true;
 
-    const { error } = await sb.auth.signInWithPassword({ email, password: senha });
+    try {
+      const { error } = await sb.auth.signInWithPassword({ email, password: senha });
 
-    if (error) {
-      btnSubmit.textContent = btnOriginalText;
-      btnSubmit.disabled = false;
+      if (error) {
+        btnSubmit.textContent = btnOriginalText;
+        btnSubmit.disabled = false;
 
-      // Jogo o erro nativo do Supabase na tela
-      document.getElementById('login-error').textContent = 'Erro Supabase: ' + (error.code || '') + ' - ' + error.message;
-      document.getElementById('login-error').style.display = 'block';
-      alert('Erro ao conectar ao Supabase: ' + error.message);
+        let msg = 'Erro ao entrar. Verifique suas credenciais.';
+        if (error.message.includes('Email not confirmed')) {
+          msg = '⚠️ E-mail não confirmado! Verifique sua caixa de entrada ou desative a confirmação no painel Supabase.';
+        } else if (error.status === 400) {
+          msg = 'E-mail ou senha inválidos. (Supabase Error 400)';
+        }
+
+        loginError.textContent = msg;
+        loginError.style.display = 'block';
+      }
+    } catch (err) {
+      console.error('Falha crítica no login:', err);
+      resetLoginButton();
     }
   });
 
   // Listener Logout
-  document.getElementById('btn-logout').addEventListener('click', (e) => {
+  document.getElementById('btn-logout').addEventListener('click', async (e) => {
     e.preventDefault();
-    sb.auth.signOut();
+    try {
+      overlay.style.display = 'flex';
+      mainApp.style.display = 'none';
+      await sb.auth.signOut();
+    } catch (err) {
+      console.error('Erro ao sair:', err);
+      // Fallback em caso de erro no Supabase: forçar recarga
+      window.location.reload();
+    }
   });
 }
 
