@@ -987,33 +987,44 @@ function initSupabaseAuthUI() {
     }
   }
 
+  let isProcessingAuth = false;
+
   // Função centralizada que processa o usuário autenticado
   async function handleAuthUser(user) {
+    if (isProcessingAuth) return;
+    isProcessingAuth = true;
+
     if (user) {
+      console.log('--- Processando Usuário:', user.email, '---');
       try {
-        console.log('Buscando perfil na tabela "profiles" para ID:', user.id);
-        const { data: profile, error } = await sb.from('profiles').select('*').eq('id', user.id).single();
+        // TIMEOUT DE SEGURANÇA: Se o banco não responder em 4s, aborta
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 4000);
+
+        console.log('Buscando perfil na tabela "profiles"...');
+        const { data: profiles, error } = await sb.from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .limit(1)
+          .abortSignal(controller.signal);
+        
+        clearTimeout(timeoutId);
+        const profile = profiles && profiles.length > 0 ? profiles[0] : null;
 
         if (error) {
           console.warn('Nota sobre perfil:', error.message);
           if (error.message.includes('relation "profiles" does not exist')) {
-            alert('⚠️ ERRO CRÍTICO: A tabela "profiles" não foi encontrada no seu Supabase. Você precisa rodar o script SQL fornecido no Editor SQL do Dashboard.');
+            alert('⚠️ TABELA FALTANDO: Rode o SQL no Dashboard do Supabase.');
             await sb.auth.signOut();
             return;
           }
         }
 
-        if (profile && !error) {
-          console.log('Perfil encontrado:', profile.name);
+        if (profile) {
+          console.log('✅ Perfil carregado:', profile.name);
           currentUser = { id: user.id, email: user.email, ...profile };
-          
-          if (!currentUser.permissions) {
-            currentUser.permissions = {
-              calc: true, trainings: true, support: true, admin: currentUser.role === 'admin'
-            };
-          }
         } else {
-          // Fallback para e-mails de admin conhecidos ou novos usuários sem perfil
+          console.log('⚠️ Perfil não encontrado, tentando auto-promoção admin...');
           if (user.email.includes('admin') || user.email.includes('ericnash2011')) {
             currentUser = {
               id: user.id, email: user.email,
@@ -1027,52 +1038,46 @@ function initSupabaseAuthUI() {
               created_at: new Date().toISOString()
             });
           } else {
-            // Se não tem perfil nem é admin mestre, barra o acesso
             await sb.auth.signOut();
-            alert('ACESSO NEGADO: Sua licença não foi encontrada no banco de dados.');
+            alert('ACESSO NEGADO: Sua licença não foi encontrada.');
             return;
           }
         }
 
-        // Toggles da interface baseada em permissões
+        // Toggles da interface
         const p = currentUser.permissions;
         if (document.getElementById('nav-item-calc')) document.getElementById('nav-item-calc').style.display = p.calc ? 'flex' : 'none';
         if (document.getElementById('nav-item-trainings')) document.getElementById('nav-item-trainings').style.display = p.trainings ? 'flex' : 'none';
         if (document.getElementById('nav-item-support')) document.getElementById('nav-item-support').style.display = p.support ? 'flex' : 'none';
-        
         const navItemAdmin = document.getElementById('nav-item-admin');
         if (navItemAdmin) navItemAdmin.style.display = p.admin ? 'flex' : 'none';
-
-        if (document.getElementById('grp-ferramentas')) document.getElementById('grp-ferramentas').style.display = p.calc ? 'block' : 'none';
-        if (document.getElementById('grp-mymetal')) document.getElementById('grp-mymetal').style.display = p.trainings ? 'block' : 'none';
-        if (document.getElementById('grp-suporte')) document.getElementById('grp-suporte').style.display = (p.support || p.admin) ? 'block' : 'none';
 
         if (p.admin) initAdminPanel();
 
         overlay.style.display = 'none';
         mainApp.style.display = 'flex';
-
         if (window.lucide) lucide.createIcons();
-        
-        // Mantém a posição se já estiver em alguma view, senão vai pra home
-        if (!window.location.hash || window.location.hash === '#login-overlay') {
-          window.location.hash = 'view-home';
-        }
+        if (!window.location.hash || window.location.hash === '#login-overlay') window.location.hash = 'view-home';
         window.dispatchEvent(new Event('hashchange'));
 
         initNavigation();
         renderPerfis();
         initSupportControls();
       } catch (e) {
-        console.error('Erro ao processar login:', e);
-        await sb.auth.signOut();
+        console.error('Erro no processamento de Auth:', e);
+        if (e.name === 'AbortError') {
+          alert('⏳ O banco de dados demorou demais para responder. Tente novamente ou verifique sua conexão.');
+        }
+        resetLoginButton();
+      } finally {
+        isProcessingAuth = false;
       }
     } else {
-      // NÃO-LOGADO: Limpa estado e volta pro formulário
       currentUser = null;
       overlay.style.display = 'flex';
       mainApp.style.display = 'none';
       resetLoginButton();
+      isProcessingAuth = false;
     }
   }
 
