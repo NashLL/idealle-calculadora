@@ -1281,8 +1281,8 @@ function initSupportControls() {
  * ROTEADOR SPA (Global)
  */
 function renderView() {
-  const views = ['view-home', 'view-calc', 'view-trainings', 'view-support', 'view-admin'];
-  const navItems = document.querySelectorAll('.nav-item');
+  const views = ['view-home', 'view-calc', 'view-trainings', 'view-support', 'view-admin', 'view-forbidden'];
+  const navItems = document.querySelectorAll('.menu-item'); // Atualizado de .nav-item para .menu-item
   const topTitle = document.getElementById('top-title');
   let hash = window.location.hash.replace('#', '') || 'view-home';
 
@@ -1576,4 +1576,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   document.getElementById('btn-calc').addEventListener('click', calcular);
+
+  // Monitor de navegação SPA (Hash)
+  window.addEventListener('hashchange', renderView);
 });

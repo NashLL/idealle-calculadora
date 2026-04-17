@@ -14,7 +14,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500&display=swap" rel="stylesheet">
 
   <!-- Onde puxaremos o motor de CSS do Visual -->
-  <link rel="stylesheet" href="style.css?v=3" />
+  <!-- Onde puxaremos o motor de CSS do Visual - FORÇANDO REFRESH DE CACHE v2024 -->
+  <link rel="stylesheet" href="style.css?v=2024_DEFAUT" />
 
   <!-- Instancia pacotes de de ícones de interface 'Lucide' em versão Open Source pelo CDN -->
   <script src="https://unpkg.com/lucide@latest"></script>
@@ -67,7 +68,7 @@
 
     <!-- Categoria: Menu Principal Básico -->
     <div class="menu-group">
-      <div class="menu-label">Principal</div>
+      <div class="menu-label"><span>Principal</span></div>
 
       <!-- Classe '.active' dita qual destas é a aba em uso -->
       <!-- O atributo 'data-target' mapeia o container ID (view-xxx) atrelado no JavaScript -->
@@ -79,7 +80,7 @@
 
     <!-- Categoria: Coleção de Ferramentas -->
     <div class="menu-group" id="grp-ferramentas">
-      <div class="menu-label">Ferramentas</div>
+      <div class="menu-label"><span>Ferramentas</span></div>
       <a href="#view-calc" class="menu-item" id="nav-item-calc">
         <i data-lucide="calculator"></i>
         <span>Calculadora H. Máx.</span>
@@ -88,7 +89,7 @@
 
     <!-- Categoria: Setor Acoplado MyMetal System -->
     <div class="menu-group" id="grp-mymetal">
-      <div class="menu-label">MyMetal</div>
+      <div class="menu-label"><span>MyMetal</span></div>
       <a href="#view-trainings" class="menu-item" id="nav-item-trainings">
         <i data-lucide="book-open"></i>
         <span>Treinamentos</span>
@@ -97,7 +98,7 @@
 
     <!-- Categoria: Atendimento ao Cliente -->
     <div class="menu-group" id="grp-suporte">
-      <div class="menu-label">Atendimento</div>
+      <div class="menu-label"><span>Atendimento</span></div>
       <a href="#view-support" class="menu-item" id="nav-item-support">
         <i data-lucide="hard-hat"></i>
         <span>Suporte</span>
@@ -182,12 +183,14 @@
         <div class="page-wrap">
           <!-- Textos Introdutórios do Assunto do Painel Base -->
           <header class="page-header">
-            <p class="page-eyebrow">NBR 10821-2017</p>
             <h1 class="page-title">Calculadora de Altura Máxima</h1>
             <p class="page-sub">Resistência arquitetônica às cargas de vento</p>
           </header>
 
-          <div class="main-grid">
+          <!-- LAYOUT FORÇADO LADO A LADO - FORMATO DASHBOARD (60% Dados / 40% Resultado) -->
+          <div class="calc-layout" style="display: grid !important; grid-template-columns: 60% 40% !important; gap: 20px !important; align-items: flex-start !important; width: 100% !important; margin-left: 0 !important;">
+            <div class="calc-form">
+              <div class="main-grid" style="display: flex; flex-direction: column; gap: 12px; width: 100%;">
             <!-- Setor 01 - Input Manual de Tamanhos e Referências Físicas da Instalação do Cliente -->
             <section class="card" id="sec-esquadria">
               <p class="sec-label">Dados do caixilho</p>
@@ -271,12 +274,16 @@
               </div>
             </section>
 
-            <!-- Setor 03 - Execução da Ação Principal -->
+              </div> <!-- Fim main-grid -->
+            </div> <!-- Fim calc-form -->
+
+          <div class="calc-sidebar" style="position: sticky; top: 1rem;">
+            <!-- Botão de Cálculo (movido para a coluna direita) -->
             <div class="calc-action">
-              <button class="btn-calc" id="btn-calc">Calcular altura máxima</button>
+              <button class="btn-calc" id="btn-calc" style="width: 100%;">Calcular altura máxima</button>
             </div>
 
-            <!-- Setor 04 - Painel Secreto: Visualização de Resposta e Diagnóstico Técnico. Só vira aparente com o JS aplicando `class="visible"`  -->
+            <!-- Resultados - aparece somente após clicar Calcular -->
             <section class="result-section" id="result-section">
               <p class="res-eyebrow">Altura máxima permitida</p>
 
@@ -327,14 +334,14 @@
                 </div>
               </div>
             </section>
-          </div>
 
-          <footer class="page-footer">
-            <p>Cálculo baseado na ABNT NBR 10821-2017. Critério de flecha: H/175 ou 30 mm (o menor). Valores
-              padronizados. Para projetos executivos, consulte seu engenheiro calculista ou o fabricante de sistemas.
-            </p>
-          </footer>
-        </div>
+            <footer class="page-footer">
+              <p>Cálculo baseado na ABNT NBR 10821-2017. Critério de flecha: H/175 ou 30 mm (o menor). Valores padronizados. Para projetos executivos, consulte seu engenheiro calculista ou o fabricante de sistemas.</p>
+            </footer>
+          </div> <!-- Fim calc-sidebar -->
+        </div> <!-- Fim calc-layout -->
+
+        </div> <!-- Fim page-wrap -->
       </section>
 
       <!-- =========================================
@@ -546,6 +553,19 @@
                   <div id="det-desc"
                     style="font-size: 14px; line-height: 1.6; color: var(--text-primary); white-space: pre-wrap; word-wrap: break-word; overflow-wrap: anywhere; hyphens: auto;">
                     ---</div>
+                  
+                  <!-- Anexo movido para abaixo da descrição -->
+                  <div id="det-attachment-wrap" style="display: none; margin-top: 20px;">
+                    <label style="font-size: 11px; color: var(--text-hint); text-transform: uppercase; font-weight: 500; display: block; margin-bottom: 8px;">Arquivo Anexo</label>
+                    <button id="btn-download-anexo" onmouseover="this.style.background='var(--surface)'" onmouseout="this.style.background='var(--surface-2)'"
+                      style="display: flex; width: fit-content; min-width: 250px; align-items: center; justify-content: space-between; background: var(--surface-2); border: 1px solid var(--border-strong); padding: 10px 16px; border-radius: var(--radius-md); cursor: pointer; transition: background 0.2s;">
+                      <div style="display: flex; align-items: center; gap: 8px; overflow: hidden;">
+                        <i data-lucide="paperclip" style="width: 14px; height: 14px; color: var(--text-secondary); flex-shrink: 0;"></i>
+                        <span id="det-anexo-nome" style="font-size: 12px; font-weight: 500; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">arquivo.pdf</span>
+                      </div>
+                      <i data-lucide="download" style="width: 14px; height: 14px; color: var(--accent); flex-shrink: 0; margin-left: 12px;"></i>
+                    </button>
+                  </div>
                   <!-- Elemento redundante mantido oculto caso o script.js puxe o ID diretamente -->
                   <span id="det-top-requester" style="display:none;">---</span>
                 </div>
@@ -637,25 +657,7 @@
                     </div>
                   </div>
 
-                  <!-- Anexo -->
-                  <div id="det-attachment-wrap"
-                    style="display: none; padding-top: 20px; border-top: 1px dashed var(--border);">
-                    <label
-                      style="font-size: 11px; color: var(--text-hint); text-transform: uppercase; font-weight: 500; display: block; margin-bottom: 8px;">Arquivo
-                      Anexo</label>
-                    <button id="btn-download-anexo" onmouseover="this.style.background='var(--surface)'"
-                      onmouseout="this.style.background='var(--surface-2)'"
-                      style="display: flex; width: 100%; align-items: center; justify-content: space-between; background: var(--surface-2); border: 1px solid var(--border-strong); padding: 10px 12px; border-radius: var(--radius-md); cursor: pointer; transition: background 0.2s;">
-                      <div style="display: flex; align-items: center; gap: 8px; overflow: hidden;">
-                        <i data-lucide="paperclip"
-                          style="width: 14px; height: 14px; color: var(--text-secondary); flex-shrink: 0;"></i>
-                        <span id="det-anexo-nome"
-                          style="font-size: 12px; font-weight: 400; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">arquivo.pdf</span>
-                      </div>
-                      <i data-lucide="download"
-                        style="width: 14px; height: 14px; color: var(--accent); flex-shrink: 0;"></i>
-                    </button>
-                  </div>
+                  <!-- Espaço reservado para metadados futuros -->
 
                 </div>
               </div>

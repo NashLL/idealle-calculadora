@@ -56,15 +56,15 @@
   --danger-bg: #FEE2E2;
   --danger-text: #991B1B;
 
-  /* Arredondamento Consistente do Layout */
-  --radius-md: 0px;
-  --radius-lg: 0px;
-  --radius-xl: 0px;
+  /* Arredondamento Consistente do Layout - Saímos do 0px para o Premium */
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 18px;
 
   /* Definições Arquitetônicas da Grade */
   --sidebar-width: 250px;
   --sidebar-collapsed-width: 70px;
-  --transition-speed: 0.3s;
+  --transition-speed: 0.25s;
 }
 
 /**
@@ -93,7 +93,7 @@ body {
   border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
-  padding: 0 1rem 1.5rem;
+  padding: 0 0.75rem 1.5rem;
   z-index: 1000;
   box-shadow: 2px 0 10px rgba(0, 0, 0, 0.02);
   transition: width var(--transition-speed) cubic-bezier(0.4, 0, 0.2, 1), padding var(--transition-speed);
@@ -106,9 +106,49 @@ body {
   padding: 0 0.5rem 1.5rem;
 }
 
-.sidebar.collapsed .menu-item span,
-.sidebar.collapsed .menu-label {
+/* Divisores entre grupos no modo minimizado */
+.menu-group {
+  position: relative;
+  margin-bottom: 0.5rem;
+  padding-bottom: 0.5rem;
+}
+
+.menu-group::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0.5rem;
+  right: 0.5rem;
+  height: 1px;
+  background: var(--border);
+  opacity: 0.5;
+}
+
+.menu-group:last-of-type::after {
   display: none;
+}
+
+/* Animação Fluida dos Textos */
+.menu-item span,
+.menu-label span {
+  display: inline-block;
+  white-space: nowrap;
+  overflow: hidden;
+  opacity: 1;
+  max-width: 200px;
+  transition: max-width var(--transition-speed), opacity var(--transition-speed), transform var(--transition-speed);
+}
+
+.sidebar.collapsed .menu-item span,
+.sidebar.collapsed .menu-label span {
+  max-width: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.sidebar.collapsed .menu-label {
+  height: 1px; /* Espaço mínimo para o divisor brilhar */
+  margin-top: 10px;
 }
 
 .sidebar.collapsed .sidebar-brand .brand-logo {
@@ -123,6 +163,13 @@ body {
 .sidebar.collapsed .menu-item {
   justify-content: center;
   padding: 0.75rem 0;
+  margin-left: 0;
+  margin-right: 0;
+  gap: 0;
+}
+
+.sidebar.collapsed .menu-item i {
+  margin: 0;
 }
 
 /* Identidade visual da marca acima da navegação */
@@ -168,13 +215,14 @@ body {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 10px 12px;
+  padding: 0.75rem 1rem;
   text-decoration: none;
   color: var(--text-secondary);
   font-weight: 400;
-  border-radius: var(--radius-md);
+  border-radius: 10px;
   margin-bottom: 4px;
   transition: all 0.2s ease;
+  overflow: hidden;
 }
 
 .menu-item i {
@@ -329,6 +377,7 @@ body {
   transition: all 0.3s ease;
   display: flex;
   flex-direction: column;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
 }
 
 .home-card:hover {
@@ -417,12 +466,18 @@ body {
   margin-bottom: 1.5rem;
 }
 
+.btn-calc:hover {
+  background: var(--accent-hover);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(249, 115, 22, 0.3);
+}
+
 .btn-secondary {
   background: var(--surface);
   border: 1px solid var(--border-strong);
   padding: 10px 20px;
   border-radius: var(--radius-md);
-  font-weight: 400;
+  font-weight: 500;
   color: var(--text-secondary);
   cursor: pointer;
   transition: all 0.2s;
@@ -431,6 +486,7 @@ body {
 .btn-secondary:hover {
   background: var(--surface-2);
   color: var(--text-primary);
+  transform: translateY(-1px);
 }
 
 
@@ -439,8 +495,9 @@ body {
  * ================================================================================= */
 
 .page-wrap {
-  max-width: 780px;
-  margin: 0 auto;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0;
 }
 
 .page-header {
@@ -473,6 +530,45 @@ body {
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+
+/* NOVO LAYOUT LATERAL DA CALCULADORA (Desktop) */
+.calc-layout {
+  display: grid;
+  grid-template-columns: 1fr 340px; /* Alinhamento fixo e preciso */
+  gap: 1.25rem;
+  align-items: flex-start;
+}
+
+.calc-sidebar {
+  position: sticky;
+  top: 1rem;
+  z-index: 5;
+}
+
+.calc-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem; /* Menor espaço entre os blocos de dados */
+}
+
+@media (max-width: 768px) {
+  .calc-layout {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+}
+
+/* Animação de Atualização de Resultado */
+@keyframes resultPulse {
+  0% { transform: scale(1); box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); }
+  50% { transform: scale(1.02); box-shadow: 0 10px 30px rgba(249, 115, 22, 0.2); }
+  100% { transform: scale(1); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.08); }
+}
+
+.result-section.visible {
+  display: block;
+  animation: resultPulse 0.5s ease;
 }
 
 /* Blocos divisórios dos Imputs */
@@ -515,7 +611,7 @@ body {
 }
 
 .field label {
-  font-size: 12px;
+  font-size: 11px; /* Fonte levemente menor para labels */
   font-weight: 400;
   color: var(--text-secondary);
 }
@@ -528,18 +624,57 @@ body {
   overflow: hidden;
   background: var(--surface);
   transition: border-color 0.2s, box-shadow 0.2s;
+  height: 32px; /* Reduzido de 38px para 32px (Padrão Dashboard Profissional) */
+}
+
+.input-wrap:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.1);
 }
 
 .input-wrap input {
   border: none;
   outline: none;
-  height: 38px;
-  padding: 0 10px;
-  font-size: 14px;
+  height: 30px; /* Acompanha o wrap de 32px */
+  padding: 0 8px;
+  font-size: 13px;
   color: var(--text-primary);
   background: transparent;
   flex: 1;
   min-width: 0;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1rem 1.25rem; /* Diminuído para compactar os módulos */
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+}
+
+.card:hover {
+  border-color: var(--border-strong);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.08);
+}
+
+.btn-calc {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  padding: 0 1.5rem;
+  height: 44px;
+  border-radius: var(--radius-md);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 4px 12px rgba(249, 115, 22, 0.2);
+}
+
+.btn-calc:hover {
+  background: var(--accent-hover);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 15px rgba(249, 115, 22, 0.3);
 }
 
 .unit {
@@ -620,7 +755,7 @@ body {
 }
 
 .perfil-row input {
-  height: 36px;
+  height: 30px; /* Altura compacta para a tabela de perfis */
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-md);
   padding: 0 8px;
@@ -707,7 +842,7 @@ body {
 .calc-action {
   display: flex;
   justify-content: flex-end;
-  margin-top: 10px;
+  margin-top: 0;
 }
 
 .btn-calc {
@@ -862,16 +997,16 @@ body {
 }
 
 .page-footer {
-  margin-top: 3rem;
-  padding-top: 1.5rem;
+  margin-top: 1.5rem;
+  padding-top: 1rem;
   border-top: 1px solid var(--border);
 }
 
 .page-footer p {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--text-hint);
-  line-height: 1.7;
-  text-align: center;
+  line-height: 1.5;
+  text-align: left;
 }
 
 /* =================================================================================
@@ -975,6 +1110,11 @@ body {
   background: var(--surface-2);
   color: var(--text-secondary);
   border: 1px solid var(--border);
+}
+
+.result-section {
+  display: none;
+  margin-top: 1rem;
 }
 
 .sup-internal-view {
