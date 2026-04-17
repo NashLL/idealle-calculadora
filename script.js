@@ -995,9 +995,10 @@ function renderView() {
     topTitle.textContent = titles[hash] || 'Dashboard';
   }
 
-  // Carrega tickets quando entra no suporte
-  if (hash === 'view-support' && typeof renderTickets === 'function') {
-    renderTickets();
+  // Carrega tickets quando entra no suporte e RESETA para a lista (evita travar em um chamado antigo)
+  if (hash === 'view-support') {
+    if (typeof switchSupportView === 'function') switchSupportView('sup-view-list');
+    if (typeof renderTickets === 'function') renderTickets();
   }
 
   const mainContent = document.querySelector('.main-content');
